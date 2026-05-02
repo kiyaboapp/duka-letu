@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
+{% load fmt %}
 {% block title %}Debtors — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Debtors</h1>{% endblock %}
 
 {% block content %}
 <div class="flex items-center justify-between mb-6">
@@ -36,7 +38,7 @@
                     <td class="px-4 py-3 text-gray-500">{{ debtor.nida_id|default:"—" }}</td>
                     <td class="px-4 py-3 text-right tabular-nums">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            TZS {{ debtor.outstanding_balance|floatformat:0 }}
+                            {{ debtor.outstanding_balance|tzs }}
                         </span>
                     </td>
                     <td class="px-4 py-3">

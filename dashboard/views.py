@@ -72,7 +72,8 @@ def dashboard_view(request):
     # ── Obligations ───────────────────────────────────────────────────────────
     overdue_obligations = PaymentObligation.objects.filter(
         due_date__lt=today,
-        payment_status='PENDING'
+    ).exclude(
+        amount_paid__gte=F('amount_due') - F('prepayment_applied')
     ).count()
 
     # ── Recent sales ──────────────────────────────────────────────────────────

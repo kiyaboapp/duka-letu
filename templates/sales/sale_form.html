@@ -1,270 +1,527 @@
 {% extends 'base.html' %}
 {% block title %}New Sale — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">New Sale</h1>{% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-5">
-    <h1 class="text-xl font-bold text-gray-900">New Sale</h1>
-    <a href="{% url 'sales:sale_list' %}" class="text-sm text-gray-500 hover:text-gray-700">← Back to Sales</a>
-</div>
-
-<div class="max-w-xl">
-    <form method="post" id="sale-form" novalidate>
-        {% csrf_token %}
-        <input type="hidden" name="product_spec" id="id_product_spec">
-
-        <div class="bg-white rounded-lg border border-gray-200 shadow-sm divide-y divide-gray-100">
-
-            <!-- ── Product picker ── -->
-            <div class="p-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Product <span class="text-red-500">*</span>
-                </label>
-
-                <!-- Search box (hidden once product selected) -->
-                <div id="search-wrap" class="relative">
-                    <input type="text" id="product-search" autocomplete="off"
-                           placeholder="Type product name, brand or variant…"
-                           class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
-                    <div id="search-results"
-                         class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg hidden max-h-64 overflow-y-auto"></div>
-                </div>
-
-                <!-- Selected chip -->
-                <div id="selected-product" class="hidden mt-2 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
-                    <div class="min-w-0">
-                        <span id="selected-label" class="text-sm font-medium text-blue-900 block truncate"></span>
-                        <span id="selected-stock" class="text-xs text-gray-500"></span>
-                    </div>
-                    <button type="button" onclick="clearProduct()"
-                            class="ml-3 flex-shrink-0 text-blue-400 hover:text-red-500 text-xs font-medium transition-colors">
-                        ✕ change
-                    </button>
-                </div>
-
-                {% if form.product_spec.errors %}
-                <p class="mt-1 text-xs text-red-600">{{ form.product_spec.errors.0 }}</p>
-                {% endif %}
-            </div>
-
-            <!-- ── Quantity ── -->
-            <div class="p-5">
-                <label for="{{ form.quantity.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                    Quantity <span class="text-red-500">*</span>
-                </label>
-                <div class="flex items-center gap-2">
-                    <button type="button" onclick="nudge('qty',-1)"
-                            class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-100 font-bold text-lg transition-colors select-none">−</button>
-                    {{ form.quantity }}
-                    <button type="button" onclick="nudge('qty',1)"
-                            class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-100 font-bold text-lg transition-colors select-none">+</button>
-                </div>
-                {% if form.quantity.errors %}<p class="mt-1 text-xs text-red-600">{{ form.quantity.errors.0 }}</p>{% endif %}
-            </div>
-
-            <!-- ── Unit Price ── -->
-            <div class="p-5">
-                <label for="{{ form.unit_price.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                    Unit Price <span class="text-red-500">*</span>
-                </label>
-                <div class="flex items-center gap-2 flex-wrap">
-                    {{ form.unit_price }}
-                    <div class="flex gap-1 flex-wrap">
-                        <button type="button" onclick="nudge('price',-1000)" class="nudge-btn">−1k</button>
-                        <button type="button" onclick="nudge('price',-500)"  class="nudge-btn">−500</button>
-                        <button type="button" onclick="nudge('price',500)"   class="nudge-btn">+500</button>
-                        <button type="button" onclick="nudge('price',1000)"  class="nudge-btn">+1k</button>
-                    </div>
-                </div>
-                {% if form.unit_price.errors %}<p class="mt-1 text-xs text-red-600">{{ form.unit_price.errors.0 }}</p>{% endif %}
-            </div>
-
-            <!-- ── Discount + Total ── -->
-            <div class="p-5 grid grid-cols-2 gap-4">
-                <div>
-                    <label for="{{ form.discount.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Discount</label>
-                    <div class="flex items-center gap-1">
-                        {{ form.discount }}
-                        <button type="button" onclick="nudge('disc',-500)"  class="nudge-btn">−500</button>
-                        <button type="button" onclick="nudge('disc',500)"   class="nudge-btn">+500</button>
-                    </div>
-                </div>
-                <div class="flex flex-col justify-end">
-                    <p class="text-xs text-gray-500 mb-1">Total</p>
-                    <p id="total-display" class="text-2xl font-bold text-gray-900 tabular-nums">—</p>
-                </div>
-            </div>
-
-            <!-- ── Payment + Date ── -->
-            <div class="p-5 grid grid-cols-2 gap-4">
-                <div>
-                    <label for="{{ form.payment_method.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                        Payment <span class="text-red-500">*</span>
-                    </label>
-                    {{ form.payment_method }}
-                    {% if form.payment_method.errors %}<p class="mt-1 text-xs text-red-600">{{ form.payment_method.errors.0 }}</p>{% endif %}
-                </div>
-                <div>
-                    <label for="{{ form.sale_date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                    {{ form.sale_date }}
-                </div>
-            </div>
-
-            <!-- ── Notes ── -->
-            <div class="p-5">
-                <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                {{ form.notes }}
-            </div>
-
-            <!-- ── Errors ── -->
-            {% if form.non_field_errors %}
-            <div class="px-5 pb-4">
-                <div class="p-3 rounded-md bg-red-50 border border-red-200">
-                    {% for error in form.non_field_errors %}
-                    <p class="text-sm text-red-700">{{ error }}</p>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- ── Actions ── -->
-            <div class="px-5 py-4 flex items-center justify-between bg-gray-50 rounded-b-lg">
-                <a href="{% url 'sales:sale_list' %}"
-                   class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors">
-                    Cancel
-                </a>
-                <button type="submit" id="submit-btn" disabled
-                        class="px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                    Save Sale
-                </button>
-            </div>
-        </div>
-    </form>
-</div>
-
 <style>
-.nudge-btn {
-    padding: 0.2rem 0.5rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    color: #374151;
-    background: white;
-    cursor: pointer;
-    transition: background 0.15s;
-    white-space: nowrap;
+/* ── Reset inside shell ── */
+#sale-shell, #sale-shell * { box-sizing: border-box; }
+
+/* ── Shell: mobile-first single col, two-col on md+ ── */
+#sale-shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas: "topbar" "left" "right" "actions";
+  max-width: 940px;
+  margin: 0 auto;
 }
-.nudge-btn:hover { background: #f3f4f6; }
+@media (min-width: 768px) {
+  #sale-shell {
+    grid-template-columns: minmax(0,1.15fr) minmax(0,0.85fr);
+    grid-template-areas:
+      "topbar  topbar"
+      "left    right"
+      "actions actions";
+    border: 1px solid #e2e1dc;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+}
+
+/* ── Topbar ── */
+#s-topbar {
+  grid-area: topbar;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 18px;
+  background: #fff;
+  border-bottom: 1px solid #e2e1dc;
+}
+#s-topbar .s-back { font-size: 13px; color: #888; text-decoration: none; }
+#s-topbar .s-back:hover { color: #111; }
+#s-topbar .s-title { font-size: 15px; font-weight: 600; color: #111; letter-spacing: -.01em; }
+
+/* ── Panels ── */
+#s-left  { grid-area: left;  background: #fff; border-bottom: 1px solid #e2e1dc; }
+#s-right { grid-area: right; background: #f7f6f2; }
+@media (min-width: 768px) {
+  #s-left  { border-bottom: none; border-right: 1px solid #e2e1dc; }
+  #s-right { border-bottom: none; }
+}
+
+/* ── Section ── */
+.s-section { padding: 15px 18px; border-bottom: 1px solid #ece9e3; }
+.s-section:last-child { border-bottom: none; }
+.s-label {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .07em;
+  text-transform: uppercase; color: #999;
+  margin-bottom: 9px; display: block;
+}
+.s-required { color: #c0392b; }
+
+/* ── Product search ── */
+.s-search-input {
+  width: 100%; height: 41px;
+  border: 1.5px solid #d8d6d0; border-radius: 8px;
+  padding: 0 12px; font-size: 14px; color: #111;
+  background: #fff; outline: none; font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
+}
+.s-search-input:focus { border-color: #111; box-shadow: 0 0 0 3px rgba(0,0,0,.07); }
+.s-search-input::placeholder { color: #bbb; }
+
+#s-results {
+  position: absolute; z-index: 50;
+  width: 100%; top: calc(100% + 3px); left: 0;
+  background: #fff; border: 1px solid #d8d6d0; border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.1);
+  max-height: 230px; overflow-y: auto; display: none;
+}
+.s-result-item {
+  padding: 10px 13px; cursor: pointer;
+  border-bottom: .5px solid #ece9e3; transition: background .1s;
+}
+.s-result-item:last-child { border-bottom: none; }
+.s-result-item:hover { background: #f7f6f2; }
+.s-result-name { font-size: 13px; font-weight: 500; color: #111; }
+.s-result-meta { font-size: 12px; color: #888; margin-top: 2px; display: flex; gap: 10px; align-items: center; }
+
+.s-chip {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: #f7f6f2; border: 1.5px solid #d8d6d0; border-radius: 8px;
+  padding: 9px 12px;
+}
+.s-chip-name { font-size: 14px; font-weight: 500; color: #111; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.s-chip-clear {
+  font-size: 11px; color: #888; background: none; border: none;
+  cursor: pointer; padding: 3px 7px; border-radius: 4px;
+  font-family: inherit; transition: all .15s; flex-shrink: 0;
+}
+.s-chip-clear:hover { background: #fdeaea; color: #9b1f1f; }
+
+/* ── Numeric inputs ── */
+.s-num-row { display: flex; align-items: center; gap: 7px; }
+.s-num {
+  width: 80px; height: 41px;
+  border: 1.5px solid #d8d6d0; border-radius: 8px;
+  text-align: center; font-size: 15px; font-weight: 500; color: #111;
+  background: #fff; outline: none; font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield; font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
+}
+.s-num::-webkit-outer-spin-button,
+.s-num::-webkit-inner-spin-button { -webkit-appearance: none; }
+.s-num:focus { border-color: #111; box-shadow: 0 0 0 3px rgba(0,0,0,.07); }
+.s-num.wide { width: 120px; }
+
+/* ── Nudge buttons ── */
+.s-nudge-strip { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 7px; }
+.s-nb {
+  height: 27px; padding: 0 9px;
+  background: none; border: 1px solid #d8d6d0; border-radius: 5px;
+  font-size: 12px; font-weight: 500; color: #555;
+  font-family: inherit; cursor: pointer; transition: all .12s; white-space: nowrap;
+}
+.s-nb:hover { background: #f7f6f2; border-color: #111; color: #111; }
+.s-nb:active { transform: scale(.95); }
+.s-nb.neg:hover { background: #fdeaea; border-color: #9b1f1f; color: #9b1f1f; }
+
+/* ── Quick-set qty tags ── */
+.s-qty-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 7px; }
+.s-qt {
+  height: 26px; padding: 0 10px;
+  background: #f7f6f2; border: 1px solid #e2e1dc; border-radius: 4px;
+  font-size: 12px; font-weight: 500; color: #555;
+  font-family: inherit; cursor: pointer; transition: all .12s;
+}
+.s-qt:hover { background: #111; color: #fff; border-color: #111; }
+.s-qt:active { transform: scale(.95); }
+
+/* ── Total card ── */
+.s-total-card { background: #111; border-radius: 10px; padding: 15px 16px; }
+.s-total-lbl { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: rgba(255,255,255,.45); }
+.s-total-amt {
+  font-size: 30px; font-weight: 600; color: #fff;
+  letter-spacing: -.02em; margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.s-total-brk { font-size: 12px; color: rgba(255,255,255,.4); margin-top: 5px; font-variant-numeric: tabular-nums; }
+
+/* ── Payment pills ── */
+.s-pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.s-pay-opt { position: relative; }
+.s-pay-opt input[type=radio] { position: absolute; opacity: 0; width: 0; height: 0; }
+.s-pay-opt label {
+  display: flex; align-items: center; justify-content: center;
+  height: 38px; border-radius: 7px;
+  border: 1.5px solid #d8d6d0;
+  font-size: 13px; font-weight: 500; color: #444;
+  cursor: pointer; transition: all .15s; background: #fff; font-family: inherit;
+}
+.s-pay-opt input[type=radio]:checked + label { border-color: #111; background: #111; color: #fff; }
+
+/* ── Generic field inputs ── */
+.s-field {
+  width: 100%; height: 40px;
+  border: 1.5px solid #d8d6d0; border-radius: 8px;
+  padding: 0 11px; font-size: 14px; color: #111;
+  background: #fff; outline: none; font-family: inherit;
+  transition: border-color .15s, box-shadow .15s; appearance: none;
+}
+.s-field:focus { border-color: #111; box-shadow: 0 0 0 3px rgba(0,0,0,.07); }
+select.s-field {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center;
+  padding-right: 30px; cursor: pointer;
+}
+textarea.s-field { height: 70px; padding: 9px 11px; resize: none; line-height: 1.5; }
+
+/* ── Stock badges ── */
+.sb { border-radius: 3px; padding: 2px 6px; font-size: 11px; font-weight: 600; }
+.sb-ok   { background: #e8f5ee; color: #1a6b3c; }
+.sb-low  { background: #fef3e2; color: #a05c00; }
+.sb-none { background: #fdeaea; color: #9b1f1f; }
+
+/* ── Errors ── */
+.s-err { font-size: 12px; color: #9b1f1f; margin-top: 5px; }
+.s-err-box { background: #fdeaea; border: 1px solid #f5c2c2; border-radius: 7px; padding: 10px 13px; margin: 0 18px 12px; }
+.s-err-box p { font-size: 13px; color: #7a1515; }
+
+/* ── Actions bar ── */
+#s-actions {
+  grid-area: actions;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 13px 18px;
+  background: #f7f6f2; border-top: 1px solid #e2e1dc;
+}
+@media (min-width: 768px) { #s-actions { border-radius: 0 0 12px 12px; } }
+
+.s-btn-cancel {
+  height: 40px; padding: 0 18px;
+  background: none; border: 1.5px solid #d8d6d0; border-radius: 8px;
+  font-size: 13px; font-weight: 500; color: #555;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+  text-decoration: none; display: inline-flex; align-items: center;
+}
+.s-btn-cancel:hover { background: #ece9e3; border-color: #aaa; color: #111; }
+
+.s-btn-save {
+  height: 40px; padding: 0 24px; flex: 1; max-width: 200px;
+  background: #111; border: 1.5px solid #111; border-radius: 8px;
+  font-size: 14px; font-weight: 600; color: #fff;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.s-btn-save:disabled { opacity: .35; cursor: not-allowed; }
+.s-btn-save:not(:disabled):hover { background: #333; border-color: #333; }
+.s-btn-save:not(:disabled):active { transform: scale(.98); }
 </style>
+
+<form method="post" id="sale-form" novalidate>
+{% csrf_token %}
+<input type="hidden" name="product_spec" id="id_product_spec">
+
+<div id="sale-shell">
+
+  <!-- Topbar -->
+  <div id="s-topbar">
+    <a href="{% url 'sales:sale_list' %}" class="s-back">← Sales</a>
+    <span class="s-title">New Sale</span>
+    <span style="font-size:11px;color:#aaa"></span>
+  </div>
+
+  <!-- LEFT: Product / Qty / Price -->
+  <div id="s-left">
+
+    <!-- Product picker -->
+    <div class="s-section">
+      <span class="s-label">Product <span class="s-required">*</span></span>
+      <div style="position:relative" id="search-wrap">
+        <input type="text" id="product-search" autocomplete="off"
+               class="s-search-input" placeholder="Search by name, brand or variant…">
+        <div id="s-results"></div>
+      </div>
+      <div id="selected-product" style="display:none" class="s-chip">
+        <span class="s-chip-name" id="selected-label"></span>
+        <span class="sb" id="selected-stock"></span>
+        <button type="button" class="s-chip-clear" onclick="clearProduct()">✕ change</button>
+      </div>
+      {% if form.product_spec.errors %}
+      <p class="s-err">{{ form.product_spec.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <!-- Quantity -->
+    <div class="s-section">
+      <label for="{{ form.quantity.id_for_label }}" class="s-label">Quantity <span class="s-required">*</span></label>
+      <div class="s-num-row">
+        <button type="button" class="s-nb neg" onclick="nudge('qty',-1)">−</button>
+        {{ form.quantity }}
+        <button type="button" class="s-nb" onclick="nudge('qty',1)">+</button>
+        <span style="font-size:13px;color:#aaa;margin-left:2px">units</span>
+      </div>
+      <div class="s-qty-tags">
+        <button type="button" class="s-qt" onclick="setQty(5)">×5</button>
+        <button type="button" class="s-qt" onclick="setQty(10)">×10</button>
+        <button type="button" class="s-qt" onclick="setQty(12)">×12</button>
+        <button type="button" class="s-qt" onclick="setQty(24)">×24</button>
+        <button type="button" class="s-qt" onclick="setQty(50)">×50</button>
+        <button type="button" class="s-qt" onclick="setQty(100)">×100</button>
+        <button type="button" class="s-qt" onclick="setQty(250)">×250</button>
+      </div>
+      {% if form.quantity.errors %}<p class="s-err">{{ form.quantity.errors.0 }}</p>{% endif %}
+    </div>
+
+    <!-- Unit Price -->
+    <div class="s-section">
+      <label for="{{ form.unit_price.id_for_label }}" class="s-label">
+        Unit Price <span class="s-required">*</span>
+        <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;color:#bbb">(TZS)</span>
+      </label>
+      <div class="s-num-row">{{ form.unit_price }}</div>
+      <div class="s-nudge-strip">
+        <button type="button" class="s-nb neg" onclick="nudge('price',-10000)">−10k</button>
+        <button type="button" class="s-nb neg" onclick="nudge('price',-5000)">−5k</button>
+        <button type="button" class="s-nb neg" onclick="nudge('price',-1000)">−1k</button>
+        <button type="button" class="s-nb neg" onclick="nudge('price',-500)">−500</button>
+        <button type="button" class="s-nb" onclick="nudge('price',500)">+500</button>
+        <button type="button" class="s-nb" onclick="nudge('price',1000)">+1k</button>
+        <button type="button" class="s-nb" onclick="nudge('price',5000)">+5k</button>
+        <button type="button" class="s-nb" onclick="nudge('price',10000)">+10k</button>
+        <button type="button" class="s-nb" onclick="nudge('price',50000)">+50k</button>
+      </div>
+      {% if form.unit_price.errors %}<p class="s-err">{{ form.unit_price.errors.0 }}</p>{% endif %}
+    </div>
+
+  </div><!-- /s-left -->
+
+  <!-- RIGHT: Total / Discount / Payment / Date / Notes -->
+  <div id="s-right">
+
+    <!-- Live Total -->
+    <div class="s-section">
+      <div class="s-total-card">
+        <div class="s-total-lbl">Total</div>
+        <div class="s-total-amt" id="total-display">—</div>
+        <div class="s-total-brk" id="total-breakdown"></div>
+      </div>
+    </div>
+
+    <!-- Discount -->
+    <div class="s-section">
+      <label for="{{ form.discount.id_for_label }}" class="s-label">
+        Discount
+        <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;color:#bbb">(TZS)</span>
+      </label>
+      <div class="s-num-row">{{ form.discount }}</div>
+      <div class="s-nudge-strip">
+        <button type="button" class="s-nb neg" onclick="nudge('disc',-5000)">−5k</button>
+        <button type="button" class="s-nb neg" onclick="nudge('disc',-1000)">−1k</button>
+        <button type="button" class="s-nb neg" onclick="nudge('disc',-500)">−500</button>
+        <button type="button" class="s-nb" onclick="nudge('disc',500)">+500</button>
+        <button type="button" class="s-nb" onclick="nudge('disc',1000)">+1k</button>
+        <button type="button" class="s-nb" onclick="nudge('disc',5000)">+5k</button>
+      </div>
+      {% if form.discount.errors %}<p class="s-err">{{ form.discount.errors.0 }}</p>{% endif %}
+    </div>
+
+    <!-- Payment method — pill UI synced to Django field -->
+    <div class="s-section">
+      <span class="s-label">Payment <span class="s-required">*</span></span>
+      <div class="s-pay-grid">
+        <div class="s-pay-opt">
+          <input type="radio" name="payment_method_ui" id="pm-cash" value="cash" checked>
+          <label for="pm-cash">Cash</label>
+        </div>
+        <div class="s-pay-opt">
+          <input type="radio" name="payment_method_ui" id="pm-mpesa" value="mpesa">
+          <label for="pm-mpesa">M-Pesa</label>
+        </div>
+        <div class="s-pay-opt">
+          <input type="radio" name="payment_method_ui" id="pm-card" value="card">
+          <label for="pm-card">Card</label>
+        </div>
+        <div class="s-pay-opt">
+          <input type="radio" name="payment_method_ui" id="pm-credit" value="credit">
+          <label for="pm-credit">Credit</label>
+        </div>
+      </div>
+      <!-- Django's actual widget, hidden — value synced via JS below -->
+      <div style="display:none">{{ form.payment_method }}</div>
+      {% if form.payment_method.errors %}<p class="s-err">{{ form.payment_method.errors.0 }}</p>{% endif %}
+    </div>
+
+    <!-- Sale date -->
+    <div class="s-section">
+      <label for="{{ form.sale_date.id_for_label }}" class="s-label">Sale date</label>
+      {{ form.sale_date }}
+    </div>
+
+    <!-- Notes -->
+    <div class="s-section">
+      <label for="{{ form.notes.id_for_label }}" class="s-label">
+        Notes <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;color:#bbb">(optional)</span>
+      </label>
+      {{ form.notes }}
+    </div>
+
+    <!-- Non-field errors -->
+    {% if form.non_field_errors %}
+    <div class="s-err-box">
+      {% for error in form.non_field_errors %}
+      <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div><!-- /s-right -->
+
+  <!-- Actions -->
+  <div id="s-actions">
+    <a href="{% url 'sales:sale_list' %}" class="s-btn-cancel">Cancel</a>
+    <button type="submit" id="submit-btn" disabled class="s-btn-save">Save Sale</button>
+  </div>
+
+</div><!-- /sale-shell -->
+</form>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
 const SEARCH_URL = "{% url 'catalog:product_spec_search' %}";
 
-// DOM refs
-const searchWrap   = document.getElementById('search-wrap');
-const searchInput  = document.getElementById('product-search');
-const resultsBox   = document.getElementById('search-results');
-const hiddenInput  = document.getElementById('id_product_spec');
-const selectedDiv  = document.getElementById('selected-product');
+const searchWrap    = document.getElementById('search-wrap');
+const searchInput   = document.getElementById('product-search');
+const resultsBox    = document.getElementById('s-results');
+const hiddenSpec    = document.getElementById('id_product_spec');
+const selectedDiv   = document.getElementById('selected-product');
 const selectedLabel = document.getElementById('selected-label');
 const selectedStock = document.getElementById('selected-stock');
-const submitBtn    = document.getElementById('submit-btn');
-const qtyInput     = document.getElementById('{{ form.quantity.id_for_label }}');
-const priceInput   = document.getElementById('{{ form.unit_price.id_for_label }}');
-const discInput    = document.getElementById('{{ form.discount.id_for_label }}');
-const totalDisplay = document.getElementById('total-display');
+const submitBtn     = document.getElementById('submit-btn');
+const qtyInput      = document.getElementById('{{ form.quantity.id_for_label }}');
+const priceInput    = document.getElementById('{{ form.unit_price.id_for_label }}');
+const discInput     = document.getElementById('{{ form.discount.id_for_label }}');
+const totalDisplay  = document.getElementById('total-display');
+const totalBreak    = document.getElementById('total-breakdown');
 
-// ── Search ────────────────────────────────────────────────────────────────────
-let timer = null;
+// ── Style Django-rendered inputs to match design ──────────────────────────────
+(function styleFields() {
+  if (qtyInput)   { qtyInput.className   = 's-num';       qtyInput.setAttribute('min','1');   qtyInput.setAttribute('step','1'); }
+  if (priceInput) { priceInput.className = 's-num wide';  priceInput.setAttribute('min','0'); priceInput.setAttribute('step','500'); }
+  if (discInput)  { discInput.className  = 's-num wide';  discInput.setAttribute('min','0');  discInput.setAttribute('step','500'); }
+  const notesEl = document.getElementById('{{ form.notes.id_for_label }}');
+  if (notesEl) notesEl.classList.add('s-field');
+  const dateEl = document.getElementById('{{ form.sale_date.id_for_label }}');
+  if (dateEl) { dateEl.classList.add('s-field'); dateEl.style.width = 'auto'; }
+})();
+
+// ── Payment pills → sync to Django select ────────────────────────────────────
+const djangoPayEl = document.getElementById('{{ form.payment_method.id_for_label }}');
+document.querySelectorAll('input[name="payment_method_ui"]').forEach(r => {
+  // Pre-select if Django already has a value (e.g. form re-render after error)
+  if (djangoPayEl && djangoPayEl.value && djangoPayEl.value === r.value) r.checked = true;
+  r.addEventListener('change', () => { if (djangoPayEl) djangoPayEl.value = r.value; });
+});
+// Set Django field to default on load
+if (djangoPayEl && !djangoPayEl.value) {
+  const checked = document.querySelector('input[name="payment_method_ui"]:checked');
+  if (checked) djangoPayEl.value = checked.value;
+}
+
+// ── Product search ────────────────────────────────────────────────────────────
+let _timer = null;
 searchInput.addEventListener('input', () => {
-    clearTimeout(timer);
-    const q = searchInput.value.trim();
-    if (!q) { resultsBox.classList.add('hidden'); return; }
-    timer = setTimeout(() => fetchResults(q), 180);
+  clearTimeout(_timer);
+  const q = searchInput.value.trim();
+  if (!q) { resultsBox.style.display = 'none'; return; }
+  _timer = setTimeout(() => fetchResults(q), 180);
 });
 
 async function fetchResults(q) {
-    const res = await fetch(`${SEARCH_URL}?q=${encodeURIComponent(q)}`);
+  try {
+    const res  = await fetch(`${SEARCH_URL}?q=${encodeURIComponent(q)}`);
     const data = await res.json();
     renderResults(data.results);
+  } catch(e) { resultsBox.style.display = 'none'; }
 }
 
 function renderResults(results) {
-    resultsBox.innerHTML = '';
-    if (!results.length) {
-        resultsBox.innerHTML = '<div class="px-4 py-3 text-sm text-gray-400">No products found</div>';
-        resultsBox.classList.remove('hidden');
-        return;
-    }
-    results.forEach(r => {
-        const div = document.createElement('div');
-        div.className = 'px-4 py-2.5 cursor-pointer hover:bg-blue-50 border-b border-gray-100 last:border-0';
-        const sc = r.stock <= 0 ? 'text-red-500' : r.stock <= 5 ? 'text-yellow-600' : 'text-green-600';
-        div.innerHTML = `
-            <div class="flex items-center justify-between gap-2">
-                <span class="text-sm text-gray-900">${r.label}</span>
-                <span class="text-xs font-semibold ${sc} whitespace-nowrap">stock: ${r.stock}</span>
-            </div>
-            ${r.selling_price ? `<div class="text-xs text-gray-400 mt-0.5">Price: ${Number(r.selling_price).toLocaleString()}</div>` : ''}
-        `;
-        div.addEventListener('mousedown', e => { e.preventDefault(); selectProduct(r); });
-        resultsBox.appendChild(div);
-    });
-    resultsBox.classList.remove('hidden');
+  resultsBox.innerHTML = '';
+  if (!results.length) {
+    resultsBox.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#aaa">No products found</div>';
+    resultsBox.style.display = 'block'; return;
+  }
+  results.forEach(r => {
+    const d = document.createElement('div');
+    d.className = 's-result-item';
+    const sc = r.stock <= 0 ? 'sb-none' : r.stock <= 5 ? 'sb-low' : 'sb-ok';
+    const sl = r.stock <= 0 ? 'Out of stock' : r.stock + ' in stock';
+    d.innerHTML = `<div class="s-result-name">${r.label}</div>
+      <div class="s-result-meta">
+        <span class="sb ${sc}">${sl}</span>
+        ${r.selling_price ? '<span>TZS ' + Number(r.selling_price).toLocaleString('en-TZ') + '</span>' : ''}
+      </div>`;
+    d.addEventListener('mousedown', e => { e.preventDefault(); selectProduct(r); });
+    resultsBox.appendChild(d);
+  });
+  resultsBox.style.display = 'block';
 }
 
 function selectProduct(r) {
-    hiddenInput.value = r.id;
-    selectedLabel.textContent = r.label;
-    const sc = r.stock <= 0 ? 'text-red-600' : r.stock <= 5 ? 'text-yellow-600' : 'text-green-600';
-    selectedStock.className = `text-xs font-medium ${sc}`;
-    selectedStock.textContent = `${r.stock} in stock`;
-    selectedDiv.classList.remove('hidden');
-    searchWrap.classList.add('hidden');
-    resultsBox.classList.add('hidden');
-    searchInput.value = '';
-    if (r.selling_price) { priceInput.value = r.selling_price; }
-    submitBtn.disabled = false;
-    updateTotal();
+  hiddenSpec.value = r.id;
+  selectedLabel.textContent = r.label;
+  const sc = r.stock <= 0 ? 'sb-none' : r.stock <= 5 ? 'sb-low' : 'sb-ok';
+  selectedStock.className = 'sb ' + sc;
+  selectedStock.textContent = r.stock <= 0 ? 'Out of stock' : r.stock + ' in stock';
+  selectedDiv.style.display = 'flex';
+  searchInput.style.display = 'none';
+  resultsBox.style.display  = 'none';
+  searchInput.value = '';
+  if (r.selling_price) priceInput.value = r.selling_price;
+  submitBtn.disabled = false;
+  updateTotal();
 }
 
 function clearProduct() {
-    hiddenInput.value = '';
-    selectedDiv.classList.add('hidden');
-    searchWrap.classList.remove('hidden');
-    searchInput.value = '';
-    searchInput.focus();
-    submitBtn.disabled = true;
-    totalDisplay.textContent = '—';
+  hiddenSpec.value = '';
+  selectedDiv.style.display = 'none';
+  searchInput.style.display = '';
+  searchInput.value = '';
+  searchInput.focus();
+  submitBtn.disabled = true;
+  totalDisplay.textContent = '—';
+  totalBreak.textContent   = '';
 }
 
-// ── Nudge buttons ─────────────────────────────────────────────────────────────
+// ── Nudge / quick-set ─────────────────────────────────────────────────────────
 function nudge(field, delta) {
-    const el = field === 'qty' ? qtyInput : field === 'price' ? priceInput : discInput;
-    const min = field === 'qty' ? 1 : 0;
-    const val = Math.max(min, (parseFloat(el.value) || 0) + delta);
-    el.value = field === 'qty' ? Math.round(val) : val.toFixed(2);
-    updateTotal();
+  const el  = field === 'qty' ? qtyInput : field === 'price' ? priceInput : discInput;
+  const min = field === 'qty' ? 1 : 0;
+  el.value  = Math.max(min, Math.round((parseFloat(el.value) || 0) + delta));
+  updateTotal();
 }
+function setQty(n) { qtyInput.value = n; updateTotal(); }
 
 // ── Total ─────────────────────────────────────────────────────────────────────
 function updateTotal() {
-    const qty   = parseFloat(qtyInput.value)   || 0;
-    const price = parseFloat(priceInput.value) || 0;
-    const disc  = parseFloat(discInput.value)  || 0;
-    const total = (qty * price) - disc;
-    totalDisplay.textContent = total > 0
-        ? 'TZS ' + total.toLocaleString('en-TZ', {minimumFractionDigits: 0})
-        : '—';
+  const qty   = parseFloat(qtyInput.value)   || 0;
+  const price = parseFloat(priceInput.value) || 0;
+  const disc  = parseFloat(discInput.value)  || 0;
+  const total = (qty * price) - disc;
+  if (qty > 0 && price > 0) {
+    totalDisplay.textContent = 'TZS ' + Math.max(0, Math.round(total)).toLocaleString('en-TZ');
+    totalBreak.textContent   = disc > 0
+      ? qty + ' × ' + Math.round(price).toLocaleString('en-TZ') + ' − ' + Math.round(disc).toLocaleString('en-TZ')
+      : qty + ' × ' + Math.round(price).toLocaleString('en-TZ');
+  } else {
+    totalDisplay.textContent = '—';
+    totalBreak.textContent   = '';
+  }
 }
-[qtyInput, priceInput, discInput].forEach(el => el?.addEventListener('input', updateTotal));
+[qtyInput, priceInput, discInput].forEach(el => el && el.addEventListener('input', updateTotal));
 
-// Close dropdown on outside click
+// ── Close dropdown on outside click ──────────────────────────────────────────
 document.addEventListener('click', e => {
-    if (!searchInput.contains(e.target) && !resultsBox.contains(e.target))
-        resultsBox.classList.add('hidden');
+  if (!searchWrap.contains(e.target)) resultsBox.style.display = 'none';
 });
 
 // ── Pre-fill from product detail page ────────────────────────────────────────

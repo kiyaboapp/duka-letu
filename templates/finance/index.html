@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
+{% load fmt %}
 {% block title %}Finance — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Finance</h1>{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-bold text-gray-900">Finance</h1>
@@ -9,7 +11,7 @@
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xl flex-shrink-0">&#128203;</div>
+            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
             <div>
                 <p class="text-2xl font-bold text-gray-900 tabular-nums">{{ total_obligations|default:0 }}</p>
                 <p class="text-sm text-gray-500">Total Obligations</p>
@@ -29,7 +31,7 @@
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl flex-shrink-0">&#10003;</div>
             <div>
-                <p class="text-2xl font-bold text-gray-900 tabular-nums">TZS {{ paid_this_month|default:0|floatformat:0 }}</p>
+                <p class="text-2xl font-bold text-gray-900 tabular-nums">{{ paid_this_month|default:0|tzs }}</p>
                 <p class="text-sm text-gray-500">Paid This Month</p>
             </div>
         </div>
@@ -57,7 +59,7 @@
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-4 py-3 text-gray-900 font-medium">{{ obligation.expense_item }}</td>
                     <td class="px-4 py-3 text-gray-500">{{ obligation.due_date|date:"M j, Y" }}</td>
-                    <td class="px-4 py-3 text-right tabular-nums font-medium text-gray-900">TZS {{ obligation.amount_due|floatformat:0 }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums font-medium text-gray-900">{{ obligation.amount_due|tzs }}</td>
                     <td class="px-4 py-3">
                         {% if obligation.is_overdue %}
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Overdue</span>

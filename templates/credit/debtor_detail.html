@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
+{% load fmt %}
 {% block title %}{{ debtor.name }} — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">{{ debtor.name }}</h1>{% endblock %}
 
 {% block content %}
 <div class="flex items-center justify-between mb-6">
@@ -35,12 +37,12 @@
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 text-center">
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Total Debt</p>
-        <p class="text-3xl font-bold text-amber-600 tabular-nums">TZS {{ debtor.total_debt|floatformat:0 }}</p>
+        <p class="text-3xl font-bold text-amber-600 tabular-nums">{{ debtor.total_debt|tzs }}</p>
     </div>
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 text-center">
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Outstanding</p>
-        <p class="text-3xl font-bold text-red-600 tabular-nums">TZS {{ debtor.outstanding_balance|floatformat:0 }}</p>
+        <p class="text-3xl font-bold text-red-600 tabular-nums">{{ debtor.outstanding_balance|tzs }}</p>
     </div>
 
 </div>
@@ -67,8 +69,8 @@
                 <tr class="hover:bg-gray-50 transition-colors {% if debt.is_overdue %}bg-red-50{% endif %}">
                     <td class="px-4 py-3 text-gray-500 tabular-nums">{{ debt.id }}</td>
                     <td class="px-4 py-3 text-gray-900 font-medium">{{ debt.product_spec }}</td>
-                    <td class="px-4 py-3 text-right tabular-nums text-gray-600">TZS {{ debt.amount_due|floatformat:0 }}</td>
-                    <td class="px-4 py-3 text-right tabular-nums font-semibold text-gray-900">TZS {{ debt.balance|floatformat:0 }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ debt.amount_due|tzs }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums font-semibold text-gray-900">{{ debt.balance|tzs }}</td>
                     <td class="px-4 py-3 text-gray-500">{{ debt.expected_payment_date|default:"—" }}</td>
                     <td class="px-4 py-3">
                         {% if debt.is_overdue %}

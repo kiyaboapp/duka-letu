@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
+{% load fmt %}
 {% block title %}Sales List — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Sales</h1>{% endblock %}
 
 {% block content %}
 <div class="flex items-center justify-between mb-6">
@@ -67,8 +69,8 @@
                         </a>
                     </td>
                     <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ sale.quantity }}</td>
-                    <td class="px-4 py-3 text-right tabular-nums text-gray-600">TZS {{ sale.unit_price|floatformat:0 }}</td>
-                    <td class="px-4 py-3 text-right tabular-nums font-semibold text-gray-900">TZS {{ sale.amount|floatformat:0 }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ sale.unit_price|tzs }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums font-semibold text-gray-900">{{ sale.amount|tzs }}</td>
                     <td class="px-4 py-3 text-gray-500">{{ sale.payment_method|default:"—" }}</td>
                     <td class="px-4 py-3 text-gray-500">{{ sale.sale_date|date:"M j, Y H:i" }}</td>
                 </tr>

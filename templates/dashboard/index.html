@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load fmt %}
 {% block title %}Dashboard — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Dashboard</h1>{% endblock %}
 
 {% block content %}
 <div class="flex items-center justify-between mb-5">
@@ -27,7 +28,7 @@
     <a href="{% url 'sales:sale_list' %}?date_from={{ today }}&date_to={{ today }}"
        class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:border-blue-300 hover:shadow-md transition-all group">
         <div class="flex items-start justify-between mb-3">
-            <div class="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center text-green-600 text-base">&#128176;</div>
+            <div class="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center text-green-600 "><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
             {% if revenue_delta_pct is not None %}
             <span class="text-xs font-semibold px-1.5 py-0.5 rounded-full
                 {% if revenue_delta_pct >= 0 %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
@@ -43,7 +44,7 @@
     <!-- Transactions Today -->
     <a href="{% url 'sales:sale_list' %}?date_from={{ today }}&date_to={{ today }}"
        class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:border-blue-300 hover:shadow-md transition-all group">
-        <div class="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-base mb-3">&#128200;</div>
+        <div class="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 mb-3"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
         <p class="text-3xl font-bold text-gray-900 tabular-nums leading-tight">{{ today_transactions }}</p>
         <p class="text-xs text-gray-500 mt-0.5">Transactions Today</p>
         <p class="text-xs text-gray-400 mt-1">{{ mtd_revenue|tzs }} this month</p>
@@ -53,7 +54,7 @@
     <a href="{% url 'credit:index' %}"
        class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:border-amber-300 hover:shadow-md transition-all group">
         <div class="flex items-start justify-between mb-3">
-            <div class="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 text-base">&#128181;</div>
+            <div class="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 "><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg></div>
             {% if overdue_debts %}
             <span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
                 {{ overdue_debts }} overdue
@@ -69,7 +70,7 @@
     <a href="{% url 'catalog:product_list' %}?stock_status=low"
        class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:border-yellow-300 hover:shadow-md transition-all group">
         <div class="flex items-start justify-between mb-3">
-            <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-base">&#128230;</div>
+            <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 "><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></div>
             {% if out_of_stock %}
             <span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
                 {{ out_of_stock }} out
@@ -92,7 +93,7 @@
             <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Month to Date</p>
             <p class="text-lg font-bold text-gray-900 tabular-nums mt-0.5">{{ mtd_revenue|tzs }}</p>
         </div>
-        <span class="text-2xl text-blue-200">&#128197;</span>
+        <span class="text-2xl text-blue-200"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></span>
     </a>
 
     <a href="{% url 'sales:sale_list' %}"
@@ -101,7 +102,7 @@
             <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Year to Date</p>
             <p class="text-lg font-bold text-gray-900 tabular-nums mt-0.5">{{ ytd_revenue|tzs }}</p>
         </div>
-        <span class="text-2xl text-indigo-200">&#128202;</span>
+        <span class="text-2xl text-indigo-200"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></span>
     </a>
 
     <a href="{% url 'finance:index' %}"
@@ -168,19 +169,19 @@
             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 pt-1">Quick Actions</p>
             <a href="{% url 'sales:sale_create' %}"
                class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
-                <span>&#128176;</span> Record Sale
+                <span><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span> Record Sale
             </a>
             <a href="{% url 'inventory:purchase_create' %}"
                class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
-                <span>&#128230;</span> Record Purchase
+                <span><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></span> Record Purchase
             </a>
             <a href="{% url 'credit:debt_create' %}"
                class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
-                <span>&#128203;</span> Credit Sale
+                <span><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></span> Credit Sale
             </a>
             <a href="{% url 'reports:income_statement' %}"
                class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
-                <span>&#128202;</span> Income Statement
+                <span><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></span> Income Statement
             </a>
         </div>
     </div>
