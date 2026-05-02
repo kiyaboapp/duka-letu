@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
+{% load fmt %}
 {% block title %}Sales — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Sales</h1>{% endblock %}
 
 {% block content %}
 <div class="flex items-center justify-between mb-6">
@@ -20,7 +22,7 @@
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl flex-shrink-0">&#128176;</div>
+            <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
             <div>
                 <p class="text-2xl font-bold text-gray-900 tabular-nums">{{ today_count|default:0 }}</p>
                 <p class="text-sm text-gray-500">Sales Today</p>
@@ -29,18 +31,18 @@
     </div>
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xl flex-shrink-0">&#128200;</div>
+            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
             <div>
-                <p class="text-2xl font-bold text-gray-900 tabular-nums">TZS {{ today_revenue|default:0|floatformat:0 }}</p>
+                <p class="text-2xl font-bold text-gray-900 tabular-nums">{{ today_revenue|default:0|tzs }}</p>
                 <p class="text-sm text-gray-500">Today's Revenue</p>
             </div>
         </div>
     </div>
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl flex-shrink-0">&#128197;</div>
+            <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 flex-shrink-0"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
             <div>
-                <p class="text-2xl font-bold text-gray-900 tabular-nums">TZS {{ mtd_revenue|default:0|floatformat:0 }}</p>
+                <p class="text-2xl font-bold text-gray-900 tabular-nums">{{ mtd_revenue|default:0|tzs }}</p>
                 <p class="text-sm text-gray-500">Month to Date</p>
             </div>
         </div>
@@ -69,7 +71,7 @@
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-4 py-3 text-gray-900 font-medium">{{ sale.product_spec }}</td>
                     <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ sale.quantity }}</td>
-                    <td class="px-4 py-3 text-right tabular-nums font-medium text-gray-900">TZS {{ sale.amount|floatformat:0 }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums font-medium text-gray-900">{{ sale.amount|tzs }}</td>
                     <td class="px-4 py-3 text-gray-500">{{ sale.payment_method|default:"—" }}</td>
                     <td class="px-4 py-3 text-right text-gray-500">{{ sale.sale_date|date:"H:i" }}</td>
                 </tr>

@@ -199,6 +199,40 @@ class AccountingService:
     def gross_profit(self) -> Decimal:
         return self.net_sales() - self.cogs()
 
+    def operating_expenses(self) -> dict:
+        """
+        Returns expenses paid in the period, grouped by ExpenseType name.
+        Uses actual Payment records (cash out) not obligations.
+        Also includes office use cost as an operating expense line.
+        """
+        from finance.models import Payment
+        from django.db.models import Sum
+        from collections import defaultdict
+
+        payments = (
+            Payment.objects
+            .filter(
+                payment_date__date__range=(self.start, self.end),
+                payment_type='EXPENSE',
+                expense_item__isnull=False,
+            )
+            .values('expense_item__expense_type__name')
+            .annotate(total=Sum('amount_paid'))
+            .order_by('expense_item__expense_type__name')
+        )
+
+        lines = {row['expense_item__expense_type__name']: row['total'] for row in payments}
+
+        # Office use cost (internal consumption) — always shown
+        from sales.models import SaleOfficeUse
+        office_qs = SaleOfficeUse.objects.filter(sale_date__date__range=(self.start, self.end))
+        office_cost = self._sum_expr(office_qs, _sale_amount_expr())
+        if office_cost:
+            lines['Office Use / Customer Care'] = lines.get('Office Use / Customer Care', Decimal('0')) + office_cost
+
+        total = sum(lines.values(), Decimal('0'))
+        return {'lines': lines, 'total': total}
+
     def to_income_statement(self) -> dict:
         """Returns full income statement data dict for template rendering."""
         direct = self.direct_sales()
@@ -214,6 +248,9 @@ class AccountingService:
         closing = self.closing_stock_value()
         cogs = cogas - closing
         gross_profit = net_sales - cogs
+
+        expenses = self.operating_expenses()
+        net_profit = gross_profit - expenses['total']
 
         return {
             'period_start': self.start,
@@ -231,4 +268,7 @@ class AccountingService:
             'closing_stock': closing,
             'cogs': cogs,
             'gross_profit': gross_profit,
+            'expense_lines': expenses['lines'],
+            'total_expenses': expenses['total'],
+            'net_profit': net_profit,
         }

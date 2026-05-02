@@ -28,21 +28,21 @@
     <table>
         <tbody>
             <tr><td colspan="2" class="section-header">Revenue</td></tr>
-            <tr class="separator"><td class="indent">Direct Sales</td><td class="amount">TZS {{ data.direct_sales|floatformat:0 }}</td></tr>
-            <tr><td class="indent">Credit Sales</td><td class="amount">TZS {{ data.credit_sales|floatformat:0 }}</td></tr>
-            <tr><td class="indent">Less: Returns Inward</td><td class="amount negative">(TZS {{ data.return_inwards|floatformat:0 }})</td></tr>
-            <tr class="subtotal"><td style="padding-left:8pt;">Net Sales</td><td class="amount">TZS {{ data.net_sales|floatformat:0 }}</td></tr>
+            <tr class="separator"><td class="indent">Direct Sales</td><td class="amount">{{ data.direct_sales|tzs }}</td></tr>
+            <tr><td class="indent">Credit Sales</td><td class="amount">{{ data.credit_sales|tzs }}</td></tr>
+            <tr><td class="indent">Less: Returns Inward</td><td class="amount negative">({{ data.return_inwards|tzs }})</td></tr>
+            <tr class="subtotal"><td style="padding-left:8pt;">Net Sales</td><td class="amount">{{ data.net_sales|tzs }}</td></tr>
 
             <tr><td colspan="2" class="section-header" style="padding-top:12pt;">Cost of Goods Sold</td></tr>
-            <tr class="separator"><td class="indent">Opening Stock</td><td class="amount">TZS {{ data.opening_stock|floatformat:0 }}</td></tr>
-            <tr><td class="indent">Add: Purchases</td><td class="amount">TZS {{ data.purchases|floatformat:0 }}</td></tr>
-            <tr><td class="indent">Less: Returns Outward</td><td class="amount negative">(TZS {{ data.return_outwards|floatformat:0 }})</td></tr>
-            <tr><td class="indent">Net Purchases</td><td class="amount">TZS {{ data.net_purchases|floatformat:0 }}</td></tr>
-            <tr><td class="indent">Cost of Goods Available (COGAS)</td><td class="amount">TZS {{ data.cogas|floatformat:0 }}</td></tr>
-            <tr><td class="indent">Less: Closing Stock</td><td class="amount negative">(TZS {{ data.closing_stock|floatformat:0 }})</td></tr>
-            <tr class="subtotal"><td style="padding-left:8pt;">Cost of Goods Sold (COGS)</td><td class="amount">TZS {{ data.cogs|floatformat:0 }}</td></tr>
+            <tr class="separator"><td class="indent">Opening Stock</td><td class="amount">{{ data.opening_stock|tzs }}</td></tr>
+            <tr><td class="indent">Add: Purchases</td><td class="amount">{{ data.purchases|tzs }}</td></tr>
+            <tr><td class="indent">Less: Returns Outward</td><td class="amount negative">({{ data.return_outwards|tzs }})</td></tr>
+            <tr><td class="indent">Net Purchases</td><td class="amount">{{ data.net_purchases|tzs }}</td></tr>
+            <tr><td class="indent">Cost of Goods Available (COGAS)</td><td class="amount">{{ data.cogas|tzs }}</td></tr>
+            <tr><td class="indent">Less: Closing Stock</td><td class="amount negative">({{ data.closing_stock|tzs }})</td></tr>
+            <tr class="subtotal"><td style="padding-left:8pt;">Cost of Goods Sold (COGS)</td><td class="amount">{{ data.cogs|tzs }}</td></tr>
 
-            <tr class="gross-profit"><td style="padding:8pt;">Gross Profit</td><td class="amount" style="padding:8pt;">TZS {{ data.gross_profit|floatformat:0 }}</td></tr>
+            <tr class="gross-profit"><td style="padding:8pt;">Gross Profit</td><td class="amount" style="padding:8pt;">{{ data.gross_profit|tzs }}</td></tr>
         </tbody>
     </table>
 

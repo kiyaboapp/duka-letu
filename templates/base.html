@@ -5,19 +5,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Kiyabo Duka — Upendo Stationery{% endblock %}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     {% block extra_css %}{% endblock %}
+    <style>
+    .nudge-btn {
+        padding: 0.2rem 0.5rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        color: #374151;
+        background: white;
+        cursor: pointer;
+        transition: background 0.15s;
+        white-space: nowrap;
+    }
+    .nudge-btn:hover { background: #f3f4f6; }
+    </style>
 </head>
 <body class="bg-gray-100 font-sans antialiased">
 
@@ -32,7 +36,7 @@
         <!-- Brand -->
         <div class="h-16 flex items-center px-6 border-b border-gray-700 flex-shrink-0">
             <a href="{% url 'dashboard:index' %}" class="flex items-center gap-2 text-white no-underline">
-                <span class="text-blue-400 text-xl">&#9670;</span>
+                <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7A1 1 0 003 11h1v6a1 1 0 001 1h4v-4h2v4h4a1 1 0 001-1v-6h1a1 1 0 00.707-1.707l-7-7z"/></svg>
                 <span class="font-bold text-lg tracking-tight">Kiyabo Duka</span>
             </a>
         </div>
@@ -43,7 +47,8 @@
             <a href="{% url 'dashboard:index' %}"
                class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
                       {% if request.resolver_match.app_name == 'dashboard' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-                <span>&#127968;</span> Dashboard
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Dashboard
             </a>
 
             <div class="pt-3 pb-1 px-3">
@@ -53,19 +58,22 @@
             <a href="{% url 'sales:sale_list' %}"
                class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
                       {% if request.resolver_match.app_name == 'sales' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-                <span>&#128176;</span> Sales
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Sales
             </a>
 
             <a href="{% url 'credit:index' %}"
                class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
                       {% if request.resolver_match.app_name == 'credit' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-                <span>&#128203;</span> Credit Sales
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                Credit Sales
             </a>
 
             <a href="{% url 'inventory:index' %}"
                class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
                       {% if request.resolver_match.app_name == 'inventory' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-                <span>&#128230;</span> Inventory
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                Inventory
             </a>
 
             <div class="pt-3 pb-1 px-3">
@@ -75,7 +83,8 @@
             <a href="{% url 'catalog:product_list' %}"
                class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
                       {% if request.resolver_match.app_name == 'catalog' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-                <span>&#128218;</span> Products
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                Products
             </a>
 
             <div class="pt-3 pb-1 px-3">
@@ -85,13 +94,15 @@
             <a href="{% url 'finance:index' %}"
                class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
                       {% if request.resolver_match.app_name == 'finance' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-                <span>&#128200;</span> Finance
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Finance
             </a>
 
             <a href="{% url 'assets:index' %}"
                class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
                       {% if request.resolver_match.app_name == 'assets' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-                <span>&#127970;</span> Assets
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                Assets
             </a>
 
             <div class="pt-3 pb-1 px-3">
@@ -101,7 +112,8 @@
             <a href="{% url 'reports:index' %}"
                class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
                       {% if request.resolver_match.app_name == 'reports' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-                <span>&#128202;</span> Reports
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Reports
             </a>
 
             <div class="pt-3 pb-1 px-3">
@@ -111,7 +123,8 @@
             <a href="/admin/"
                class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
                       text-gray-300 hover:bg-gray-800 hover:text-white">
-                <span>&#9881;</span> Admin
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Admin
             </a>
 
         </nav>

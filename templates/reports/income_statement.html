@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
+{% load fmt %}
 {% block title %}Income Statement — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Income Statement</h1>{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-bold text-gray-900">Income Statement</h1>
@@ -34,19 +36,19 @@
             </tr>
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-2.5 pl-10 text-gray-600">Direct Sales</td>
-                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">TZS {{ data.direct_sales|floatformat:0 }}</td>
+                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">{{ data.direct_sales|tzs }}</td>
             </tr>
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-2.5 pl-10 text-gray-600">Credit Sales</td>
-                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">TZS {{ data.credit_sales|floatformat:0 }}</td>
+                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">{{ data.credit_sales|tzs }}</td>
             </tr>
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-2.5 pl-10 text-gray-600">Less: Returns Inward</td>
-                <td class="px-6 py-2.5 text-right tabular-nums text-red-600">(TZS {{ data.return_inwards|floatformat:0 }})</td>
+                <td class="px-6 py-2.5 text-right tabular-nums text-red-600">({{ data.return_inwards|tzs }})</td>
             </tr>
             <tr class="bg-blue-50 border-t border-blue-100">
                 <td class="px-6 py-3 font-bold text-gray-900">Net Sales</td>
-                <td class="px-6 py-3 text-right tabular-nums font-bold text-gray-900">TZS {{ data.net_sales|floatformat:0 }}</td>
+                <td class="px-6 py-3 text-right tabular-nums font-bold text-gray-900">{{ data.net_sales|tzs }}</td>
             </tr>
 
             <!-- COGS section header -->
@@ -55,37 +57,64 @@
             </tr>
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-2.5 pl-10 text-gray-600">Opening Stock</td>
-                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">TZS {{ data.opening_stock|floatformat:0 }}</td>
+                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">{{ data.opening_stock|tzs }}</td>
             </tr>
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-2.5 pl-10 text-gray-600">Add: Purchases</td>
-                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">TZS {{ data.purchases|floatformat:0 }}</td>
+                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">{{ data.purchases|tzs }}</td>
             </tr>
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-2.5 pl-10 text-gray-600">Less: Returns Outward</td>
-                <td class="px-6 py-2.5 text-right tabular-nums text-red-600">(TZS {{ data.return_outwards|floatformat:0 }})</td>
+                <td class="px-6 py-2.5 text-right tabular-nums text-red-600">({{ data.return_outwards|tzs }})</td>
             </tr>
             <tr class="hover:bg-gray-50 border-t border-gray-100">
                 <td class="px-6 py-2.5 pl-10 text-gray-600">Net Purchases</td>
-                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">TZS {{ data.net_purchases|floatformat:0 }}</td>
+                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">{{ data.net_purchases|tzs }}</td>
             </tr>
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-2.5 pl-10 text-gray-600">Cost of Goods Available (COGAS)</td>
-                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">TZS {{ data.cogas|floatformat:0 }}</td>
+                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">{{ data.cogas|tzs }}</td>
             </tr>
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-2.5 pl-10 text-gray-600">Less: Closing Stock</td>
-                <td class="px-6 py-2.5 text-right tabular-nums text-red-600">(TZS {{ data.closing_stock|floatformat:0 }})</td>
+                <td class="px-6 py-2.5 text-right tabular-nums text-red-600">({{ data.closing_stock|tzs }})</td>
             </tr>
             <tr class="bg-red-50 border-t border-red-100">
                 <td class="px-6 py-3 font-bold text-gray-900">Cost of Goods Sold (COGS)</td>
-                <td class="px-6 py-3 text-right tabular-nums font-bold text-gray-900">TZS {{ data.cogs|floatformat:0 }}</td>
+                <td class="px-6 py-3 text-right tabular-nums font-bold text-gray-900">{{ data.cogs|tzs }}</td>
             </tr>
 
             <!-- GROSS PROFIT -->
             <tr class="bg-green-50 border-t-2 border-green-200">
                 <td class="px-6 py-4 text-lg font-bold text-gray-900">Gross Profit</td>
-                <td class="px-6 py-4 text-right tabular-nums text-lg font-bold text-green-700">TZS {{ data.gross_profit|floatformat:0 }}</td>
+                <td class="px-6 py-4 text-right tabular-nums text-lg font-bold text-green-700">{{ data.gross_profit|tzs }}</td>
+            </tr>
+
+            <!-- OPERATING EXPENSES -->
+            <tr class="bg-gray-50 border-t border-gray-200">
+                <td colspan="2" class="px-6 py-3 font-semibold text-gray-700 uppercase tracking-wide text-xs">Operating Expenses</td>
+            </tr>
+            {% for name, amount in data.expense_lines.items %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-2.5 pl-10 text-gray-600">{{ name }}</td>
+                <td class="px-6 py-2.5 text-right tabular-nums text-gray-900">{{ amount|tzs }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="2" class="px-6 py-2.5 pl-10 text-gray-400 text-xs">No expenses recorded for this period</td>
+            </tr>
+            {% endfor %}
+            <tr class="bg-red-50 border-t border-red-100">
+                <td class="px-6 py-3 font-bold text-gray-900">Total Operating Expenses</td>
+                <td class="px-6 py-3 text-right tabular-nums font-bold text-red-700">{{ data.total_expenses|tzs }}</td>
+            </tr>
+
+            <!-- NET PROFIT -->
+            <tr class="border-t-2 {% if data.net_profit >= 0 %}bg-emerald-50 border-emerald-300{% else %}bg-red-50 border-red-300{% endif %}">
+                <td class="px-6 py-5 text-xl font-bold text-gray-900">Net Profit</td>
+                <td class="px-6 py-5 text-right tabular-nums text-xl font-bold {% if data.net_profit >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">
+                    {{ data.net_profit|tzs }}
+                </td>
             </tr>
         </tbody>
     </table>
