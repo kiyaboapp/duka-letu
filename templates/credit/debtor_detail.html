@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}{{ debtor.name }} — Kiyabo Duka{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">{{ debtor.name }}</h1>
+    <div class="flex gap-2">
+        <a href="{% url 'credit:repayment_create' %}"
+           class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
+            Record Repayment
+        </a>
+        <a href="{% url 'credit:debt_create' %}"
+           class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors">
+            + Credit Sale
+        </a>
+    </div>
+</div>
+
+<!-- Info + KPI cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contact</h3>
+        <p class="text-sm text-gray-700 font-medium mb-1">{{ debtor.phone_1|default:"No phone" }}</p>
+        {% if debtor.phone_2 %}
+        <p class="text-sm text-gray-500 mb-1">{{ debtor.phone_2 }}</p>
+        {% endif %}
+        {% if debtor.nida_id %}
+        <p class="text-xs text-gray-400 mt-2">NIDA: {{ debtor.nida_id }}</p>
+        {% endif %}
+        {% if debtor.address %}
+        <p class="text-sm text-gray-500 mt-2">{{ debtor.address|linebreaksbr }}</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 text-center">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Total Debt</p>
+        <p class="text-3xl font-bold text-amber-600 tabular-nums">TZS {{ debtor.total_debt|floatformat:0 }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 text-center">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Outstanding</p>
+        <p class="text-3xl font-bold text-red-600 tabular-nums">TZS {{ debtor.outstanding_balance|floatformat:0 }}</p>
+    </div>
+
+</div>
+
+<!-- Credit sales table -->
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Credit Sales</h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">ID</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Product</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Amount Due</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Balance</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Expected</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for debt in debtor.debts.all %}
+                <tr class="hover:bg-gray-50 transition-colors {% if debt.is_overdue %}bg-red-50{% endif %}">
+                    <td class="px-4 py-3 text-gray-500 tabular-nums">{{ debt.id }}</td>
+                    <td class="px-4 py-3 text-gray-900 font-medium">{{ debt.product_spec }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums text-gray-600">TZS {{ debt.amount_due|floatformat:0 }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums font-semibold text-gray-900">TZS {{ debt.balance|floatformat:0 }}</td>
+                    <td class="px-4 py-3 text-gray-500">{{ debt.expected_payment_date|default:"—" }}</td>
+                    <td class="px-4 py-3">
+                        {% if debt.is_overdue %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Overdue</span>
+                        {% elif debt.balance == 0 %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Paid</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Active</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-gray-400">No credit sales</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

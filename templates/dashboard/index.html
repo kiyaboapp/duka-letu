@@ -1,0 +1,316 @@
+{% extends 'base.html' %}
+{% load fmt %}
+{% block title %}Dashboard — Kiyabo Duka{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+    <div>
+        <h1 class="text-xl font-bold text-gray-900">Dashboard</h1>
+        <p class="text-sm text-gray-400 mt-0.5">{% now "l, F j, Y" %}</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'sales:sale_create' %}"
+           class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition-colors">
+            + New Sale
+        </a>
+        <a href="{% url 'inventory:purchase_create' %}"
+           class="inline-flex items-center gap-1.5 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
+            + Purchase
+        </a>
+    </div>
+</div>
+
+<!-- ── KPI Cards ── -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+
+    <!-- Today's Revenue -->
+    <a href="{% url 'sales:sale_list' %}?date_from={{ today }}&date_to={{ today }}"
+       class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:border-blue-300 hover:shadow-md transition-all group">
+        <div class="flex items-start justify-between mb-3">
+            <div class="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center text-green-600 text-base">&#128176;</div>
+            {% if revenue_delta_pct is not None %}
+            <span class="text-xs font-semibold px-1.5 py-0.5 rounded-full
+                {% if revenue_delta_pct >= 0 %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                {% if revenue_delta_pct >= 0 %}+{% endif %}{{ revenue_delta_pct }}%
+            </span>
+            {% endif %}
+        </div>
+        <p class="text-xl font-bold text-gray-900 tabular-nums leading-tight">{{ today_revenue|tzs }}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Today's Revenue</p>
+        <p class="text-xs text-gray-400 mt-1">vs {{ yesterday_revenue|tzs }} yesterday</p>
+    </a>
+
+    <!-- Transactions Today -->
+    <a href="{% url 'sales:sale_list' %}?date_from={{ today }}&date_to={{ today }}"
+       class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:border-blue-300 hover:shadow-md transition-all group">
+        <div class="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-base mb-3">&#128200;</div>
+        <p class="text-3xl font-bold text-gray-900 tabular-nums leading-tight">{{ today_transactions }}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Transactions Today</p>
+        <p class="text-xs text-gray-400 mt-1">{{ mtd_revenue|tzs }} this month</p>
+    </a>
+
+    <!-- Outstanding Receivables -->
+    <a href="{% url 'credit:index' %}"
+       class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:border-amber-300 hover:shadow-md transition-all group">
+        <div class="flex items-start justify-between mb-3">
+            <div class="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 text-base">&#128181;</div>
+            {% if overdue_debts %}
+            <span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
+                {{ overdue_debts }} overdue
+            </span>
+            {% endif %}
+        </div>
+        <p class="text-xl font-bold text-gray-900 tabular-nums leading-tight">{{ outstanding_receivables|tzs }}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Outstanding Receivables</p>
+        <p class="text-xs text-gray-400 mt-1">Click to manage debtors</p>
+    </a>
+
+    <!-- Stock Status -->
+    <a href="{% url 'catalog:product_list' %}?stock_status=low"
+       class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:border-yellow-300 hover:shadow-md transition-all group">
+        <div class="flex items-start justify-between mb-3">
+            <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-base">&#128230;</div>
+            {% if out_of_stock %}
+            <span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
+                {{ out_of_stock }} out
+            </span>
+            {% endif %}
+        </div>
+        <p class="text-3xl font-bold {% if low_stock %}text-yellow-600{% else %}text-gray-900{% endif %} tabular-nums leading-tight">{{ low_stock }}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Low Stock Items</p>
+        <p class="text-xs text-gray-400 mt-1">of {{ total_products }} total products</p>
+    </a>
+
+</div>
+
+<!-- ── Second row: MTD + YTD + Obligations ── -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+
+    <a href="{% url 'sales:sale_list' %}"
+       class="bg-white rounded-lg border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between hover:border-blue-300 hover:shadow-md transition-all">
+        <div>
+            <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Month to Date</p>
+            <p class="text-lg font-bold text-gray-900 tabular-nums mt-0.5">{{ mtd_revenue|tzs }}</p>
+        </div>
+        <span class="text-2xl text-blue-200">&#128197;</span>
+    </a>
+
+    <a href="{% url 'sales:sale_list' %}"
+       class="bg-white rounded-lg border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between hover:border-blue-300 hover:shadow-md transition-all">
+        <div>
+            <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Year to Date</p>
+            <p class="text-lg font-bold text-gray-900 tabular-nums mt-0.5">{{ ytd_revenue|tzs }}</p>
+        </div>
+        <span class="text-2xl text-indigo-200">&#128202;</span>
+    </a>
+
+    <a href="{% url 'finance:index' %}"
+       class="bg-white rounded-lg border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between
+              {% if overdue_obligations %}hover:border-red-300{% else %}hover:border-blue-300{% endif %} hover:shadow-md transition-all">
+        <div>
+            <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Overdue Obligations</p>
+            <p class="text-lg font-bold {% if overdue_obligations %}text-red-600{% else %}text-gray-900{% endif %} tabular-nums mt-0.5">
+                {{ overdue_obligations }}
+            </p>
+        </div>
+        <span class="text-2xl {% if overdue_obligations %}text-red-200{% else %}text-gray-200{% endif %}">&#9888;</span>
+    </a>
+
+</div>
+
+<!-- ── Main content: Alerts + Recent Sales ── -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+
+    <!-- Alerts -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+            <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Alerts</h2>
+        </div>
+        <div class="p-3 space-y-2">
+            {% if overdue_debts %}
+            <a href="{% url 'credit:index' %}"
+               class="flex items-center justify-between p-3 rounded-md bg-red-50 border border-red-100 hover:bg-red-100 transition-colors">
+                <span class="text-sm text-red-700 font-medium">Overdue debts</span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-200 text-red-800">{{ overdue_debts }}</span>
+            </a>
+            {% endif %}
+            {% if out_of_stock %}
+            <a href="{% url 'catalog:product_list' %}?stock_status=out"
+               class="flex items-center justify-between p-3 rounded-md bg-red-50 border border-red-100 hover:bg-red-100 transition-colors">
+                <span class="text-sm text-red-700 font-medium">Out of stock</span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-200 text-red-800">{{ out_of_stock }}</span>
+            </a>
+            {% endif %}
+            {% if low_stock %}
+            <a href="{% url 'catalog:product_list' %}?stock_status=low"
+               class="flex items-center justify-between p-3 rounded-md bg-yellow-50 border border-yellow-100 hover:bg-yellow-100 transition-colors">
+                <span class="text-sm text-yellow-700 font-medium">Low stock items</span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-200 text-yellow-800">{{ low_stock }}</span>
+            </a>
+            {% endif %}
+            {% if overdue_obligations %}
+            <a href="{% url 'finance:index' %}"
+               class="flex items-center justify-between p-3 rounded-md bg-red-50 border border-red-100 hover:bg-red-100 transition-colors">
+                <span class="text-sm text-red-700 font-medium">Overdue obligations</span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-200 text-red-800">{{ overdue_obligations }}</span>
+            </a>
+            {% endif %}
+            {% if not overdue_debts and not low_stock and not out_of_stock and not overdue_obligations %}
+            <div class="py-8 text-center text-gray-400 text-sm">
+                <div class="text-3xl mb-2 text-green-400">&#10003;</div>
+                All clear
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Quick actions -->
+        <div class="px-3 pb-3 pt-1 border-t border-gray-100 mt-1 space-y-1.5">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 pt-1">Quick Actions</p>
+            <a href="{% url 'sales:sale_create' %}"
+               class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                <span>&#128176;</span> Record Sale
+            </a>
+            <a href="{% url 'inventory:purchase_create' %}"
+               class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                <span>&#128230;</span> Record Purchase
+            </a>
+            <a href="{% url 'credit:debt_create' %}"
+               class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                <span>&#128203;</span> Credit Sale
+            </a>
+            <a href="{% url 'reports:income_statement' %}"
+               class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                <span>&#128202;</span> Income Statement
+            </a>
+        </div>
+    </div>
+
+    <!-- Recent Sales -->
+    <div class="lg:col-span-2 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Recent Sales</h2>
+            <a href="{% url 'sales:sale_list' %}" class="text-xs text-blue-600 hover:text-blue-700 font-medium">View all →</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-100 text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Product</th>
+                        <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">Qty</th>
+                        <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">Amount</th>
+                        <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">Time</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for sale in recent_sales %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-2.5">
+                            <a href="{% url 'catalog:product_detail' sale.product_spec.pk %}"
+                               class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                                {{ sale.product_spec }}
+                            </a>
+                        </td>
+                        <td class="px-3 py-2.5 text-right tabular-nums text-gray-600">{{ sale.quantity }}</td>
+                        <td class="px-3 py-2.5 text-right tabular-nums font-semibold text-gray-900">{{ sale.amount|tzs }}</td>
+                        <td class="px-3 py-2.5 text-right text-gray-400 text-xs">{{ sale.sale_date|date:"M j H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-4 py-10 text-center text-gray-400">
+                            No sales today —
+                            <a href="{% url 'sales:sale_create' %}" class="text-blue-600 hover:underline">record one</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── Low Stock + Top Products ── -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+    <!-- Low stock -->
+    {% if low_stock_products %}
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">⚠ Low / Out of Stock</h2>
+            <a href="{% url 'catalog:product_list' %}?stock_status=low" class="text-xs text-blue-600 hover:text-blue-700 font-medium">View all →</a>
+        </div>
+        <table class="min-w-full divide-y divide-gray-100 text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Product</th>
+                    <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">Stock</th>
+                    <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">Reorder</th>
+                    <th class="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for item in low_stock_products %}
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-2.5">
+                        <a href="{% url 'catalog:product_detail' item.pk %}"
+                           class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                            {{ item }}
+                        </a>
+                    </td>
+                    <td class="px-3 py-2.5 text-right">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold
+                            {% if item.current_stock <= 0 %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                            {{ item.current_stock }}
+                        </span>
+                    </td>
+                    <td class="px-3 py-2.5 text-right tabular-nums text-gray-500 text-xs">{{ item.reorder_level }}</td>
+                    <td class="px-3 py-2.5 text-right">
+                        <a href="{% url 'inventory:purchase_create' %}?product_spec={{ item.pk }}"
+                           class="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">
+                            + Buy
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Top products today -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Top Products Today</h2>
+            <a href="{% url 'sales:sale_list' %}?date_from={{ today }}&date_to={{ today }}" class="text-xs text-blue-600 hover:text-blue-700 font-medium">View sales →</a>
+        </div>
+        <table class="min-w-full divide-y divide-gray-100 text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Product</th>
+                    <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">Qty</th>
+                    <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">Revenue</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for p in top_products %}
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-2.5">
+                        <a href="{% url 'catalog:product_detail' p.product_spec_id %}"
+                           class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                            {{ p.product_spec__product__name }} — {{ p.product_spec__spec_value__value }}
+                        </a>
+                    </td>
+                    <td class="px-3 py-2.5 text-right tabular-nums text-gray-600">{{ p.total_qty }}</td>
+                    <td class="px-3 py-2.5 text-right tabular-nums font-semibold text-gray-900">{{ p.total_rev|tzs }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="px-4 py-8 text-center text-gray-400">No sales today</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}

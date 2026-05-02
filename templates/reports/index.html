@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Reports — Kiyabo Duka{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Reports</h1>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <a href="{% url 'reports:income_statement' %}" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:border-blue-300 hover:shadow-md transition-all group">
+        <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xl mb-4">&#128200;</div>
+        <h3 class="font-semibold text-gray-800 group-hover:text-blue-600 mb-1">Income Statement</h3>
+        <p class="text-sm text-gray-500">Revenue, COGS, gross profit, and operating expenses</p>
+    </a>
+    <a href="{% url 'reports:stock_report' %}" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:border-blue-300 hover:shadow-md transition-all group">
+        <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl mb-4">&#128218;</div>
+        <h3 class="font-semibold text-gray-800 group-hover:text-blue-600 mb-1">Stock Report</h3>
+        <p class="text-sm text-gray-500">Current stock levels, low stock alerts, and reorder status</p>
+    </a>
+    <a href="{% url 'reports:debtor_aging' %}" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:border-blue-300 hover:shadow-md transition-all group">
+        <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-xl mb-4">&#128203;</div>
+        <h3 class="font-semibold text-gray-800 group-hover:text-blue-600 mb-1">Debtor Aging</h3>
+        <p class="text-sm text-gray-500">Outstanding receivables bucketed by age (0–30, 31–60, 61–90, 90+ days)</p>
+    </a>
+</div>
+{% endblock %}

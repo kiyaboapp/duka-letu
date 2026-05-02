@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+{% block title %}New Sale — Kiyabo Duka{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+    <h1 class="text-xl font-bold text-gray-900">New Sale</h1>
+    <a href="{% url 'sales:sale_list' %}" class="text-sm text-gray-500 hover:text-gray-700">← Back to Sales</a>
+</div>
+
+<div class="max-w-xl">
+    <form method="post" id="sale-form" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="product_spec" id="id_product_spec">
+
+        <div class="bg-white rounded-lg border border-gray-200 shadow-sm divide-y divide-gray-100">
+
+            <!-- ── Product picker ── -->
+            <div class="p-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Product <span class="text-red-500">*</span>
+                </label>
+
+                <!-- Search box (hidden once product selected) -->
+                <div id="search-wrap" class="relative">
+                    <input type="text" id="product-search" autocomplete="off"
+                           placeholder="Type product name, brand or variant…"
+                           class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                    <div id="search-results"
+                         class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg hidden max-h-64 overflow-y-auto"></div>
+                </div>
+
+                <!-- Selected chip -->
+                <div id="selected-product" class="hidden mt-2 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+                    <div class="min-w-0">
+                        <span id="selected-label" class="text-sm font-medium text-blue-900 block truncate"></span>
+                        <span id="selected-stock" class="text-xs text-gray-500"></span>
+                    </div>
+                    <button type="button" onclick="clearProduct()"
+                            class="ml-3 flex-shrink-0 text-blue-400 hover:text-red-500 text-xs font-medium transition-colors">
+                        ✕ change
+                    </button>
+                </div>
+
+                {% if form.product_spec.errors %}
+                <p class="mt-1 text-xs text-red-600">{{ form.product_spec.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- ── Quantity ── -->
+            <div class="p-5">
+                <label for="{{ form.quantity.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Quantity <span class="text-red-500">*</span>
+                </label>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="nudge('qty',-1)"
+                            class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-100 font-bold text-lg transition-colors select-none">−</button>
+                    {{ form.quantity }}
+                    <button type="button" onclick="nudge('qty',1)"
+                            class="w-9 h-9 flex items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-100 font-bold text-lg transition-colors select-none">+</button>
+                </div>
+                {% if form.quantity.errors %}<p class="mt-1 text-xs text-red-600">{{ form.quantity.errors.0 }}</p>{% endif %}
+            </div>
+
+            <!-- ── Unit Price ── -->
+            <div class="p-5">
+                <label for="{{ form.unit_price.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Unit Price <span class="text-red-500">*</span>
+                </label>
+                <div class="flex items-center gap-2 flex-wrap">
+                    {{ form.unit_price }}
+                    <div class="flex gap-1 flex-wrap">
+                        <button type="button" onclick="nudge('price',-1000)" class="nudge-btn">−1k</button>
+                        <button type="button" onclick="nudge('price',-500)"  class="nudge-btn">−500</button>
+                        <button type="button" onclick="nudge('price',500)"   class="nudge-btn">+500</button>
+                        <button type="button" onclick="nudge('price',1000)"  class="nudge-btn">+1k</button>
+                    </div>
+                </div>
+                {% if form.unit_price.errors %}<p class="mt-1 text-xs text-red-600">{{ form.unit_price.errors.0 }}</p>{% endif %}
+            </div>
+
+            <!-- ── Discount + Total ── -->
+            <div class="p-5 grid grid-cols-2 gap-4">
+                <div>
+                    <label for="{{ form.discount.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Discount</label>
+                    <div class="flex items-center gap-1">
+                        {{ form.discount }}
+                        <button type="button" onclick="nudge('disc',-500)"  class="nudge-btn">−500</button>
+                        <button type="button" onclick="nudge('disc',500)"   class="nudge-btn">+500</button>
+                    </div>
+                </div>
+                <div class="flex flex-col justify-end">
+                    <p class="text-xs text-gray-500 mb-1">Total</p>
+                    <p id="total-display" class="text-2xl font-bold text-gray-900 tabular-nums">—</p>
+                </div>
+            </div>
+
+            <!-- ── Payment + Date ── -->
+            <div class="p-5 grid grid-cols-2 gap-4">
+                <div>
+                    <label for="{{ form.payment_method.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        Payment <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.payment_method }}
+                    {% if form.payment_method.errors %}<p class="mt-1 text-xs text-red-600">{{ form.payment_method.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.sale_date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    {{ form.sale_date }}
+                </div>
+            </div>
+
+            <!-- ── Notes ── -->
+            <div class="p-5">
+                <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                {{ form.notes }}
+            </div>
+
+            <!-- ── Errors ── -->
+            {% if form.non_field_errors %}
+            <div class="px-5 pb-4">
+                <div class="p-3 rounded-md bg-red-50 border border-red-200">
+                    {% for error in form.non_field_errors %}
+                    <p class="text-sm text-red-700">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ── Actions ── -->
+            <div class="px-5 py-4 flex items-center justify-between bg-gray-50 rounded-b-lg">
+                <a href="{% url 'sales:sale_list' %}"
+                   class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" id="submit-btn" disabled
+                        class="px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    Save Sale
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.nudge-btn {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    color: #374151;
+    background: white;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+.nudge-btn:hover { background: #f3f4f6; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SEARCH_URL = "{% url 'catalog:product_spec_search' %}";
+
+// DOM refs
+const searchWrap   = document.getElementById('search-wrap');
+const searchInput  = document.getElementById('product-search');
+const resultsBox   = document.getElementById('search-results');
+const hiddenInput  = document.getElementById('id_product_spec');
+const selectedDiv  = document.getElementById('selected-product');
+const selectedLabel = document.getElementById('selected-label');
+const selectedStock = document.getElementById('selected-stock');
+const submitBtn    = document.getElementById('submit-btn');
+const qtyInput     = document.getElementById('{{ form.quantity.id_for_label }}');
+const priceInput   = document.getElementById('{{ form.unit_price.id_for_label }}');
+const discInput    = document.getElementById('{{ form.discount.id_for_label }}');
+const totalDisplay = document.getElementById('total-display');
+
+// ── Search ────────────────────────────────────────────────────────────────────
+let timer = null;
+searchInput.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = searchInput.value.trim();
+    if (!q) { resultsBox.classList.add('hidden'); return; }
+    timer = setTimeout(() => fetchResults(q), 180);
+});
+
+async function fetchResults(q) {
+    const res = await fetch(`${SEARCH_URL}?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    renderResults(data.results);
+}
+
+function renderResults(results) {
+    resultsBox.innerHTML = '';
+    if (!results.length) {
+        resultsBox.innerHTML = '<div class="px-4 py-3 text-sm text-gray-400">No products found</div>';
+        resultsBox.classList.remove('hidden');
+        return;
+    }
+    results.forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'px-4 py-2.5 cursor-pointer hover:bg-blue-50 border-b border-gray-100 last:border-0';
+        const sc = r.stock <= 0 ? 'text-red-500' : r.stock <= 5 ? 'text-yellow-600' : 'text-green-600';
+        div.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+                <span class="text-sm text-gray-900">${r.label}</span>
+                <span class="text-xs font-semibold ${sc} whitespace-nowrap">stock: ${r.stock}</span>
+            </div>
+            ${r.selling_price ? `<div class="text-xs text-gray-400 mt-0.5">Price: ${Number(r.selling_price).toLocaleString()}</div>` : ''}
+        `;
+        div.addEventListener('mousedown', e => { e.preventDefault(); selectProduct(r); });
+        resultsBox.appendChild(div);
+    });
+    resultsBox.classList.remove('hidden');
+}
+
+function selectProduct(r) {
+    hiddenInput.value = r.id;
+    selectedLabel.textContent = r.label;
+    const sc = r.stock <= 0 ? 'text-red-600' : r.stock <= 5 ? 'text-yellow-600' : 'text-green-600';
+    selectedStock.className = `text-xs font-medium ${sc}`;
+    selectedStock.textContent = `${r.stock} in stock`;
+    selectedDiv.classList.remove('hidden');
+    searchWrap.classList.add('hidden');
+    resultsBox.classList.add('hidden');
+    searchInput.value = '';
+    if (r.selling_price) { priceInput.value = r.selling_price; }
+    submitBtn.disabled = false;
+    updateTotal();
+}
+
+function clearProduct() {
+    hiddenInput.value = '';
+    selectedDiv.classList.add('hidden');
+    searchWrap.classList.remove('hidden');
+    searchInput.value = '';
+    searchInput.focus();
+    submitBtn.disabled = true;
+    totalDisplay.textContent = '—';
+}
+
+// ── Nudge buttons ─────────────────────────────────────────────────────────────
+function nudge(field, delta) {
+    const el = field === 'qty' ? qtyInput : field === 'price' ? priceInput : discInput;
+    const min = field === 'qty' ? 1 : 0;
+    const val = Math.max(min, (parseFloat(el.value) || 0) + delta);
+    el.value = field === 'qty' ? Math.round(val) : val.toFixed(2);
+    updateTotal();
+}
+
+// ── Total ─────────────────────────────────────────────────────────────────────
+function updateTotal() {
+    const qty   = parseFloat(qtyInput.value)   || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    const disc  = parseFloat(discInput.value)  || 0;
+    const total = (qty * price) - disc;
+    totalDisplay.textContent = total > 0
+        ? 'TZS ' + total.toLocaleString('en-TZ', {minimumFractionDigits: 0})
+        : '—';
+}
+[qtyInput, priceInput, discInput].forEach(el => el?.addEventListener('input', updateTotal));
+
+// Close dropdown on outside click
+document.addEventListener('click', e => {
+    if (!searchInput.contains(e.target) && !resultsBox.contains(e.target))
+        resultsBox.classList.add('hidden');
+});
+
+// ── Pre-fill from product detail page ────────────────────────────────────────
+{% if prefill_spec %}
+selectProduct({{ prefill_spec|safe }});
+{% endif %}
+</script>
+{% endblock %}

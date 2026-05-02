@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.product.name }} — Kiyabo Duka{% endblock %}
+{% block content %}
+<nav class="flex items-center gap-2 text-sm text-gray-500 mb-4">
+    <a href="{% url 'catalog:product_list' %}" class="text-blue-600 hover:text-blue-700">Products</a>
+    <span>/</span>
+    <span class="text-gray-700">{{ product.product.name }}</span>
+</nav>
+
+<div class="flex items-start justify-between mb-6 pb-4 border-b border-gray-200">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ product.product.name }}</h1>
+        <div class="flex gap-2 mt-2 flex-wrap">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">{{ product.spec_value.value }}</span>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">{{ product.product.product_type.category.name }}</span>
+            {% if product.product.brand %}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">{{ product.product.brand.name }}</span>{% endif %}
+        </div>
+    </div>
+    <div class="text-center px-6 py-4 rounded-lg flex-shrink-0 {% if product.current_stock <= 0 %}bg-red-50{% elif product.is_low_stock %}bg-yellow-50{% else %}bg-green-50{% endif %}">
+        <span class="block text-4xl font-bold tabular-nums {% if product.current_stock <= 0 %}text-red-600{% elif product.is_low_stock %}text-yellow-600{% else %}text-green-600{% endif %}">{{ product.current_stock }}</span>
+        <span class="text-sm text-gray-500">in stock</span>
+    </div>
+</div>
+
+<div class="flex gap-2 mb-6">
+    {% if product.current_stock > 0 %}
+    <a href="{% url 'sales:sale_create' %}?product_spec={{ product.pk }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">&#128176; Sell</a>
+    {% endif %}
+    <a href="{% url 'inventory:purchase_create' %}?product_spec={{ product.pk }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">&#128722; Purchase</a>
+    <a href="{% url 'credit:debt_create' %}?product_spec={{ product.pk }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">&#128203; Credit Sale</a>
+</div>
+
+<div class="border-b border-gray-200 mb-6">
+    <nav class="flex gap-0">
+        <button onclick="showTab('overview')" id="tab-overview" class="px-4 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600 transition-colors">Overview</button>
+        <button onclick="showTab('transactions')" id="tab-transactions" class="px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">Transactions</button>
+        <button onclick="showTab('stock')" id="tab-stock" class="px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">Stock Movement</button>
+    </nav>
+</div>
+
+<div id="pane-overview">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Pricing</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-sm text-gray-500">Average Cost</span><span class="text-sm font-medium tabular-nums">TZS {{ financials.avg_cost|floatformat:2|default:"—" }}</span></div>
+                <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-sm text-gray-500">Selling Price</span><span class="text-sm font-medium tabular-nums">TZS {{ financials.avg_price|floatformat:2|default:"—" }}</span></div>
+                <div class="flex justify-between py-2 bg-gray-50 -mx-5 px-5 rounded-b-lg"><span class="text-sm text-gray-500">Stock Value</span><span class="text-sm font-semibold tabular-nums">TZS {{ financials.stock_value|floatformat:0|default:"0" }}</span></div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">90-Day Activity</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between py-1.5"><span class="text-sm text-gray-500">Purchased</span><span class="text-sm font-medium text-green-600 tabular-nums">+{{ stock_summary.purchased|default:0 }}</span></div>
+                <div class="flex justify-between py-1.5"><span class="text-sm text-gray-500">Sold (Cash)</span><span class="text-sm font-medium text-red-600 tabular-nums">-{{ stock_summary.sold|default:0 }}</span></div>
+                <div class="flex justify-between py-1.5"><span class="text-sm text-gray-500">Sold (Credit)</span><span class="text-sm font-medium text-red-600 tabular-nums">-{{ stock_summary.credit|default:0 }}</span></div>
+                <div class="flex justify-between py-1.5"><span class="text-sm text-gray-500">Office Use</span><span class="text-sm font-medium text-red-600 tabular-nums">-{{ stock_summary.office_use|default:0 }}</span></div>
+                <div class="flex justify-between py-1.5"><span class="text-sm text-gray-500">Drawings</span><span class="text-sm font-medium text-red-600 tabular-nums">-{{ stock_summary.drawings|default:0 }}</span></div>
+            </div>
+        </div>
+    </div>
+    {% if related_products %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Other Variants</h3>
+        <div class="flex flex-wrap gap-2">
+            {% for related in related_products %}
+            <a href="{% url 'catalog:product_detail' related.pk %}" class="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors text-sm">
+                <span class="font-medium text-gray-700">{{ related.spec_value.value }}</span>
+                <span class="tabular-nums text-xs px-1.5 py-0.5 rounded-full {% if related.current_stock <= 0 %}bg-red-100 text-red-700{% elif related.is_low_stock %}bg-yellow-100 text-yellow-700{% else %}bg-green-100 text-green-700{% endif %}">{{ related.current_stock }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div id="pane-transactions" class="hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-100"><h3 class="text-sm font-semibold text-gray-700">Recent Sales (30 days)</h3></div>
+            <table class="min-w-full text-sm"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left text-xs text-gray-500">Date</th><th class="px-3 py-2 text-right text-xs text-gray-500">Qty</th><th class="px-3 py-2 text-right text-xs text-gray-500">Amount</th></tr></thead>
+            <tbody class="divide-y divide-gray-100">{% for sale in recent_sales %}<tr><td class="px-3 py-2 text-gray-500">{{ sale.sale_date|date:"M j" }}</td><td class="px-3 py-2 text-right tabular-nums">{{ sale.quantity }}</td><td class="px-3 py-2 text-right tabular-nums">{{ sale.amount|floatformat:0 }}</td></tr>{% empty %}<tr><td colspan="3" class="px-3 py-4 text-center text-gray-400 text-xs">No sales</td></tr>{% endfor %}</tbody></table>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-100"><h3 class="text-sm font-semibold text-gray-700">Recent Purchases (30 days)</h3></div>
+            <table class="min-w-full text-sm"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left text-xs text-gray-500">Date</th><th class="px-3 py-2 text-left text-xs text-gray-500">Supplier</th><th class="px-3 py-2 text-right text-xs text-gray-500">Qty</th></tr></thead>
+            <tbody class="divide-y divide-gray-100">{% for p in recent_purchases %}<tr><td class="px-3 py-2 text-gray-500">{{ p.purchase.purchase_date|date:"M j" }}</td><td class="px-3 py-2 text-gray-700">{{ p.purchase.supplier.name }}</td><td class="px-3 py-2 text-right tabular-nums">{{ p.quantity }}</td></tr>{% empty %}<tr><td colspan="3" class="px-3 py-4 text-center text-gray-400 text-xs">No purchases</td></tr>{% endfor %}</tbody></table>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-100"><h3 class="text-sm font-semibold text-gray-700">Credit Sales (30 days)</h3></div>
+            <table class="min-w-full text-sm"><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left text-xs text-gray-500">Date</th><th class="px-3 py-2 text-left text-xs text-gray-500">Debtor</th><th class="px-3 py-2 text-right text-xs text-gray-500">Balance</th></tr></thead>
+            <tbody class="divide-y divide-gray-100">{% for debt in recent_credit %}<tr><td class="px-3 py-2 text-gray-500">{{ debt.sale_date|date:"M j" }}</td><td class="px-3 py-2 text-gray-700">{{ debt.debtor.name }}</td><td class="px-3 py-2 text-right tabular-nums">{{ debt.balance|floatformat:0 }}</td></tr>{% empty %}<tr><td colspan="3" class="px-3 py-4 text-center text-gray-400 text-xs">No credit sales</td></tr>{% endfor %}</tbody></table>
+        </div>
+    </div>
+</div>
+
+<div id="pane-stock" class="hidden">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 max-w-lg">
+        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Stock Movement (90 days)</h3>
+        <div class="space-y-2">
+            <div class="flex justify-between p-3 bg-gray-50 rounded-md font-medium"><span class="text-gray-600">Opening (90 days ago)</span><span class="tabular-nums">{{ product.current_stock|add:stock_summary.sold|add:stock_summary.credit|add:stock_summary.office_use|add:stock_summary.drawings }}</span></div>
+            <div class="flex justify-between p-3 bg-green-50 rounded-md"><span class="text-green-700">+ Purchased</span><span class="tabular-nums text-green-700 font-medium">+{{ stock_summary.purchased|default:0 }}</span></div>
+            <div class="flex justify-between p-3 bg-red-50 rounded-md"><span class="text-red-700">- Sold (Cash + Credit)</span><span class="tabular-nums text-red-700 font-medium">-{{ stock_summary.sold|add:stock_summary.credit|default:0 }}</span></div>
+            <div class="flex justify-between p-3 bg-red-50 rounded-md"><span class="text-red-700">- Office Use + Drawings</span><span class="tabular-nums text-red-700 font-medium">-{{ stock_summary.office_use|add:stock_summary.drawings|default:0 }}</span></div>
+            <div class="flex justify-between p-3 bg-blue-50 rounded-md font-semibold"><span class="text-blue-700">Current Stock</span><span class="tabular-nums text-blue-700">{{ product.current_stock }}</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showTab(name) {
+    ['overview','transactions','stock'].forEach(t => {
+        document.getElementById('pane-' + t).classList.add('hidden');
+        const btn = document.getElementById('tab-' + t);
+        btn.classList.remove('border-blue-600','text-blue-600');
+        btn.classList.add('border-transparent','text-gray-500');
+    });
+    document.getElementById('pane-' + name).classList.remove('hidden');
+    const active = document.getElementById('tab-' + name);
+    active.classList.remove('border-transparent','text-gray-500');
+    active.classList.add('border-blue-600','text-blue-600');
+}
+</script>
+{% endblock %}

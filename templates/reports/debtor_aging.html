@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Debtor Aging — Kiyabo Duka{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Debtor Aging Report</h1>
+    <span class="text-sm text-gray-500">As of {% now "F j, Y" %}</span>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Debtor</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">0–30 Days</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">31–60 Days</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">61–90 Days</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">90+ Days</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Total</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for item in aging_data %}
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-3 text-gray-900 font-medium">{{ item.debtor.name }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums text-gray-600">TZS {{ item.bucket_0_30|floatformat:0 }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums text-gray-600">TZS {{ item.bucket_31_60|floatformat:0 }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums text-gray-600">TZS {{ item.bucket_61_90|floatformat:0 }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums {% if item.bucket_90_plus > 0 %}text-red-600 font-semibold{% else %}text-gray-600{% endif %}">
+                        TZS {{ item.bucket_90_plus|floatformat:0 }}
+                    </td>
+                    <td class="px-4 py-3 text-right tabular-nums font-bold text-gray-900">TZS {{ item.total|floatformat:0 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-gray-400">No outstanding debts</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

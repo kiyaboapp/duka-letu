@@ -1,0 +1,361 @@
+{% extends 'base.html' %}
+{% block title %}New Purchase — Kiyabo Duka{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+    <h1 class="text-xl font-bold text-gray-900">New Purchase</h1>
+    <a href="{% url 'inventory:index' %}" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
+</div>
+
+<form method="post" id="purchase-form" novalidate>
+    {% csrf_token %}
+    {{ formset.management_form }}
+
+    <div class="max-w-4xl space-y-4">
+
+        <!-- ── Header ── -->
+        <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+                <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purchase Header</h2>
+            </div>
+            <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label for="{{ form.supplier.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        Supplier <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.supplier }}
+                    {% if form.supplier.errors %}<p class="mt-1 text-xs text-red-600">{{ form.supplier.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.purchase_date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    {{ form.purchase_date }}
+                </div>
+                <div>
+                    <label for="{{ form.invoice_number.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Invoice #</label>
+                    {{ form.invoice_number }}
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Line items ── -->
+        <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 rounded-t-lg flex items-center justify-between">
+                <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Line Items</h2>
+                <button type="button" onclick="addRow()"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-md hover:bg-blue-700 transition-colors">
+                    + Add Item
+                </button>
+            </div>
+
+            <!-- Column headers (desktop) -->
+            <div class="hidden sm:grid grid-cols-12 gap-2 px-5 py-2 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                <div class="col-span-5">Product</div>
+                <div class="col-span-2 text-center">Qty</div>
+                <div class="col-span-2 text-right">Unit Cost</div>
+                <div class="col-span-2 text-right">Sell Price</div>
+                <div class="col-span-1"></div>
+            </div>
+
+            <div id="rows-container" class="divide-y divide-gray-100">
+                {% for detail_form in formset %}
+                <div class="purchase-row px-5 py-4 grid grid-cols-12 gap-2 items-start" data-index="{{ forloop.counter0 }}">
+                    {% for hidden in detail_form.hidden_fields %}{{ hidden }}{% endfor %}
+
+                    <!-- Product -->
+                    <div class="col-span-12 sm:col-span-5">
+                        <input type="hidden" name="{{ detail_form.product_spec.html_name }}"
+                               id="spec_{{ forloop.counter0 }}" value="{{ detail_form.product_spec.value|default:'' }}">
+                        <div id="search-wrap-{{ forloop.counter0 }}" class="relative">
+                            <input type="text" id="search_{{ forloop.counter0 }}" autocomplete="off"
+                                   placeholder="Search product…"
+                                   class="row-search w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                                   data-index="{{ forloop.counter0 }}">
+                            <div id="results_{{ forloop.counter0 }}"
+                                 class="row-results absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg hidden max-h-56 overflow-y-auto"></div>
+                        </div>
+                        <div id="selected_{{ forloop.counter0 }}" class="hidden mt-1 flex items-center justify-between bg-blue-50 border border-blue-200 rounded px-2 py-1.5">
+                            <span class="text-xs text-blue-900 font-medium selected-label truncate"></span>
+                            <button type="button" onclick="clearRow({{ forloop.counter0 }})"
+                                    class="ml-2 flex-shrink-0 text-blue-400 hover:text-red-500 text-xs transition-colors">✕</button>
+                        </div>
+                    </div>
+
+                    <!-- Qty with nudge -->
+                    <div class="col-span-4 sm:col-span-2">
+                        <label class="sm:hidden text-xs text-gray-400 mb-0.5 block">Qty</label>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="nudgeRow({{ forloop.counter0 }},'qty',-1)"
+                                    class="w-7 h-9 flex items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100 font-bold text-base select-none">−</button>
+                            <input type="number" name="{{ detail_form.quantity.html_name }}"
+                                   id="qty_{{ forloop.counter0 }}"
+                                   value="{{ detail_form.quantity.value|default:'' }}"
+                                   min="1" placeholder="0"
+                                   class="row-qty w-full rounded-md border border-gray-300 px-2 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-center"
+                                   data-index="{{ forloop.counter0 }}">
+                            <button type="button" onclick="nudgeRow({{ forloop.counter0 }},'qty',1)"
+                                    class="w-7 h-9 flex items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100 font-bold text-base select-none">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Unit cost with nudge -->
+                    <div class="col-span-4 sm:col-span-2">
+                        <label class="sm:hidden text-xs text-gray-400 mb-0.5 block">Cost</label>
+                        <input type="number" name="{{ detail_form.unit_cost.html_name }}"
+                               id="cost_{{ forloop.counter0 }}"
+                               value="{{ detail_form.unit_cost.value|default:'' }}"
+                               step="0.01" placeholder="0.00"
+                               class="row-cost w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-right"
+                               data-index="{{ forloop.counter0 }}">
+                        <div class="flex gap-0.5 mt-1">
+                            <button type="button" onclick="nudgeRow({{ forloop.counter0 }},'cost',-500)"  class="nudge-btn flex-1">−500</button>
+                            <button type="button" onclick="nudgeRow({{ forloop.counter0 }},'cost',500)"   class="nudge-btn flex-1">+500</button>
+                            <button type="button" onclick="nudgeRow({{ forloop.counter0 }},'cost',1000)"  class="nudge-btn flex-1">+1k</button>
+                        </div>
+                    </div>
+
+                    <!-- Sell price -->
+                    <div class="col-span-3 sm:col-span-2">
+                        <label class="sm:hidden text-xs text-gray-400 mb-0.5 block">Sell</label>
+                        <input type="number" name="{{ detail_form.suggested_selling_price.html_name }}"
+                               id="sell_{{ forloop.counter0 }}"
+                               value="{{ detail_form.suggested_selling_price.value|default:'' }}"
+                               step="0.01" placeholder="0.00"
+                               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-right">
+                        <div class="flex gap-0.5 mt-1">
+                            <button type="button" onclick="nudgeRow({{ forloop.counter0 }},'sell',-500)"  class="nudge-btn flex-1">−500</button>
+                            <button type="button" onclick="nudgeRow({{ forloop.counter0 }},'sell',500)"   class="nudge-btn flex-1">+500</button>
+                            <button type="button" onclick="nudgeRow({{ forloop.counter0 }},'sell',1000)"  class="nudge-btn flex-1">+1k</button>
+                        </div>
+                    </div>
+
+                    <!-- Remove -->
+                    <div class="col-span-1 flex items-start justify-center pt-2">
+                        <button type="button" onclick="removeRow(this)"
+                                class="text-gray-300 hover:text-red-500 transition-colors text-xl leading-none" title="Remove row">✕</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Grand total -->
+            <div class="px-5 py-3 border-t border-gray-100 bg-gray-50 rounded-b-lg flex justify-end">
+                <span class="text-sm text-gray-500">Total:&nbsp;</span>
+                <span id="grand-total" class="text-sm font-bold text-gray-900 tabular-nums ml-1">—</span>
+            </div>
+        </div>
+
+        <!-- ── Actions ── -->
+        <div class="flex items-center justify-between">
+            <a href="{% url 'inventory:index' %}"
+               class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors">
+                Cancel
+            </a>
+            <button type="submit"
+                    class="px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition-colors">
+                Save Purchase
+            </button>
+        </div>
+    </div>
+</form>
+
+<style>
+.nudge-btn {
+    padding: 0.15rem 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    color: #374151;
+    background: white;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: center;
+}
+.nudge-btn:hover { background: #f3f4f6; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SEARCH_URL = "{% url 'catalog:product_spec_search' %}";
+const TOTAL_FORMS = document.querySelector('[name="form-TOTAL_FORMS"]');
+let rowCount = {{ formset.total_form_count }};
+let timers = {};
+
+// ── Search ────────────────────────────────────────────────────────────────────
+function attachSearch(idx) {
+    const input = document.getElementById(`search_${idx}`);
+    if (!input) return;
+    input.addEventListener('input', () => {
+        clearTimeout(timers[idx]);
+        const q = input.value.trim();
+        if (!q) { document.getElementById(`results_${idx}`).classList.add('hidden'); return; }
+        timers[idx] = setTimeout(() => fetchResults(q, idx), 180);
+    });
+}
+
+async function fetchResults(q, idx) {
+    const res = await fetch(`${SEARCH_URL}?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    renderResults(data.results, idx);
+}
+
+function renderResults(results, idx) {
+    const box = document.getElementById(`results_${idx}`);
+    box.innerHTML = '';
+    if (!results.length) {
+        box.innerHTML = '<div class="px-4 py-3 text-sm text-gray-400">No products found</div>';
+        box.classList.remove('hidden'); return;
+    }
+    results.forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'px-4 py-2.5 cursor-pointer hover:bg-blue-50 border-b border-gray-100 last:border-0';
+        const sc = r.stock <= 0 ? 'text-red-500' : r.stock <= 5 ? 'text-yellow-600' : 'text-green-600';
+        div.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+                <span class="text-sm text-gray-900">${r.label}</span>
+                <span class="text-xs font-semibold ${sc} whitespace-nowrap">stock: ${r.stock}</span>
+            </div>
+            ${r.cost_price ? `<div class="text-xs text-gray-400 mt-0.5">Cost: ${Number(r.cost_price).toLocaleString()} / Sell: ${Number(r.selling_price).toLocaleString()}</div>` : ''}
+        `;
+        div.addEventListener('mousedown', e => { e.preventDefault(); selectProduct(r, idx); });
+        box.appendChild(div);
+    });
+    box.classList.remove('hidden');
+}
+
+function selectProduct(r, idx) {
+    document.getElementById(`spec_${idx}`).value = r.id;
+    document.getElementById(`search-wrap-${idx}`).classList.add('hidden');
+    const sel = document.getElementById(`selected_${idx}`);
+    sel.querySelector('.selected-label').textContent = r.label;
+    sel.classList.remove('hidden');
+    document.getElementById(`results_${idx}`).classList.add('hidden');
+    if (r.cost_price)     document.getElementById(`cost_${idx}`).value = r.cost_price;
+    if (r.selling_price)  document.getElementById(`sell_${idx}`).value = r.selling_price;
+    updateGrandTotal();
+}
+
+function clearRow(idx) {
+    document.getElementById(`spec_${idx}`).value = '';
+    document.getElementById(`selected_${idx}`).classList.add('hidden');
+    document.getElementById(`search-wrap-${idx}`).classList.remove('hidden');
+    document.getElementById(`search_${idx}`).value = '';
+    document.getElementById(`search_${idx}`).focus();
+    updateGrandTotal();
+}
+
+// ── Nudge ─────────────────────────────────────────────────────────────────────
+function nudgeRow(idx, field, delta) {
+    const el = field === 'qty'  ? document.getElementById(`qty_${idx}`)
+             : field === 'cost' ? document.getElementById(`cost_${idx}`)
+             :                    document.getElementById(`sell_${idx}`);
+    const min = field === 'qty' ? 1 : 0;
+    const val = Math.max(min, (parseFloat(el.value) || 0) + delta);
+    el.value = field === 'qty' ? Math.round(val) : val.toFixed(2);
+    updateGrandTotal();
+}
+
+// ── Row management ────────────────────────────────────────────────────────────
+function addRow() {
+    const idx = rowCount;
+    const container = document.getElementById('rows-container');
+    const div = document.createElement('div');
+    div.className = 'purchase-row px-5 py-4 grid grid-cols-12 gap-2 items-start';
+    div.dataset.index = idx;
+    div.innerHTML = `
+        <input type="hidden" name="form-${idx}-id" id="id_form-${idx}-id">
+        <div class="col-span-12 sm:col-span-5">
+            <input type="hidden" name="form-${idx}-product_spec" id="spec_${idx}">
+            <div id="search-wrap-${idx}" class="relative">
+                <input type="text" id="search_${idx}" autocomplete="off" placeholder="Search product…"
+                       class="row-search w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                       data-index="${idx}">
+                <div id="results_${idx}" class="row-results absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg hidden max-h-56 overflow-y-auto"></div>
+            </div>
+            <div id="selected_${idx}" class="hidden mt-1 flex items-center justify-between bg-blue-50 border border-blue-200 rounded px-2 py-1.5">
+                <span class="text-xs text-blue-900 font-medium selected-label truncate"></span>
+                <button type="button" onclick="clearRow(${idx})" class="ml-2 flex-shrink-0 text-blue-400 hover:text-red-500 text-xs">✕</button>
+            </div>
+        </div>
+        <div class="col-span-4 sm:col-span-2">
+            <label class="sm:hidden text-xs text-gray-400 mb-0.5 block">Qty</label>
+            <div class="flex items-center gap-1">
+                <button type="button" onclick="nudgeRow(${idx},'qty',-1)" class="w-7 h-9 flex items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100 font-bold text-base select-none">−</button>
+                <input type="number" name="form-${idx}-quantity" id="qty_${idx}" min="1" placeholder="0"
+                       class="row-qty w-full rounded-md border border-gray-300 px-2 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-center"
+                       data-index="${idx}">
+                <button type="button" onclick="nudgeRow(${idx},'qty',1)" class="w-7 h-9 flex items-center justify-center rounded border border-gray-300 text-gray-500 hover:bg-gray-100 font-bold text-base select-none">+</button>
+            </div>
+        </div>
+        <div class="col-span-4 sm:col-span-2">
+            <label class="sm:hidden text-xs text-gray-400 mb-0.5 block">Cost</label>
+            <input type="number" name="form-${idx}-unit_cost" id="cost_${idx}" step="0.01" placeholder="0.00"
+                   class="row-cost w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-right"
+                   data-index="${idx}">
+            <div class="flex gap-0.5 mt-1">
+                <button type="button" onclick="nudgeRow(${idx},'cost',-500)"  class="nudge-btn flex-1">−500</button>
+                <button type="button" onclick="nudgeRow(${idx},'cost',500)"   class="nudge-btn flex-1">+500</button>
+                <button type="button" onclick="nudgeRow(${idx},'cost',1000)"  class="nudge-btn flex-1">+1k</button>
+            </div>
+        </div>
+        <div class="col-span-3 sm:col-span-2">
+            <label class="sm:hidden text-xs text-gray-400 mb-0.5 block">Sell</label>
+            <input type="number" name="form-${idx}-suggested_selling_price" id="sell_${idx}" step="0.01" placeholder="0.00"
+                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-right">
+            <div class="flex gap-0.5 mt-1">
+                <button type="button" onclick="nudgeRow(${idx},'sell',-500)"  class="nudge-btn flex-1">−500</button>
+                <button type="button" onclick="nudgeRow(${idx},'sell',500)"   class="nudge-btn flex-1">+500</button>
+                <button type="button" onclick="nudgeRow(${idx},'sell',1000)"  class="nudge-btn flex-1">+1k</button>
+            </div>
+        </div>
+        <div class="col-span-1 flex items-start justify-center pt-2">
+            <button type="button" onclick="removeRow(this)" class="text-gray-300 hover:text-red-500 transition-colors text-xl leading-none">✕</button>
+        </div>
+    `;
+    container.appendChild(div);
+    rowCount++;
+    TOTAL_FORMS.value = rowCount;
+    attachSearch(idx);
+    document.getElementById(`search_${idx}`).focus();
+}
+
+function removeRow(btn) {
+    const rows = document.querySelectorAll('.purchase-row');
+    if (rows.length <= 1) return;
+    btn.closest('.purchase-row').remove();
+    updateGrandTotal();
+}
+
+function updateGrandTotal() {
+    let total = 0;
+    document.querySelectorAll('.purchase-row').forEach(row => {
+        const idx = row.dataset.index;
+        const qty  = parseFloat(document.getElementById(`qty_${idx}`)?.value)  || 0;
+        const cost = parseFloat(document.getElementById(`cost_${idx}`)?.value) || 0;
+        total += qty * cost;
+    });
+    document.getElementById('grand-total').textContent =
+        total > 0 ? 'TZS ' + total.toLocaleString('en-TZ', {minimumFractionDigits: 0}) : '—';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.purchase-row').forEach(row => {
+    attachSearch(parseInt(row.dataset.index));
+});
+
+document.addEventListener('click', e => {
+    if (!e.target.classList.contains('row-search'))
+        document.querySelectorAll('.row-results').forEach(b => b.classList.add('hidden'));
+});
+
+// Pre-fill first row if coming from product detail
+{% if prefill_spec %}
+(function() {
+    const r = {{ prefill_spec|safe }};
+    // auto-select into row 0
+    selectProduct(r, 0);
+})();
+{% endif %}
+</script>
+{% endblock %}

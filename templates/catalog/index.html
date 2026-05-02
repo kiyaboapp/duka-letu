@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Catalog — Kiyabo Duka{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Product Catalog</h1>
+    <a href="{% url 'catalog:product_list' %}"
+       class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">
+        View All Products
+    </a>
+</div>
+
+<!-- KPI row -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xl flex-shrink-0">&#128218;</div>
+            <div>
+                <p class="text-2xl font-bold text-gray-900 tabular-nums">{{ total_products|default:0 }}</p>
+                <p class="text-sm text-gray-500">Products</p>
+            </div>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl flex-shrink-0">&#128230;</div>
+            <div>
+                <p class="text-2xl font-bold text-gray-900 tabular-nums">{{ total_skus|default:0 }}</p>
+                <p class="text-sm text-gray-500">Total SKUs</p>
+            </div>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 text-xl flex-shrink-0">&#9888;</div>
+            <div>
+                <p class="text-2xl font-bold text-gray-900 tabular-nums">{{ low_stock_skus|default:0 }}</p>
+                <p class="text-sm text-gray-500">Low Stock SKUs</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick links -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <a href="{% url 'catalog:product_list' %}" class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:border-blue-300 transition-colors group">
+        <p class="font-semibold text-gray-800 group-hover:text-blue-600">All Products</p>
+        <p class="text-sm text-gray-500 mt-1">Browse and search the full catalog</p>
+    </a>
+    <a href="{% url 'catalog:product_list' %}?stock_status=low" class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:border-yellow-300 transition-colors group">
+        <p class="font-semibold text-gray-800 group-hover:text-yellow-600">Low Stock</p>
+        <p class="text-sm text-gray-500 mt-1">Items approaching reorder level</p>
+    </a>
+    <a href="{% url 'catalog:product_list' %}?stock_status=out" class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:border-red-300 transition-colors group">
+        <p class="font-semibold text-gray-800 group-hover:text-red-600">Out of Stock</p>
+        <p class="text-sm text-gray-500 mt-1">Items with zero stock</p>
+    </a>
+    <a href="/admin/catalog/" class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:border-gray-400 transition-colors group">
+        <p class="font-semibold text-gray-800 group-hover:text-gray-600">Admin</p>
+        <p class="text-sm text-gray-500 mt-1">Manage categories, brands, specs</p>
+    </a>
+</div>
+{% endblock %}
