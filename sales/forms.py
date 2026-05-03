@@ -30,6 +30,10 @@ class SaleForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not self.instance.pk:
             self.initial.setdefault('sale_date', NOW_STR())
+            from finance.models import PaymentMethod
+            cash = PaymentMethod.objects.filter(name__iexact='cash').values_list('pk', flat=True).first()
+            if cash:
+                self.initial.setdefault('payment_method', cash)
 
     def clean(self):
         cleaned_data = super().clean()

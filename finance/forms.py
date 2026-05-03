@@ -38,6 +38,9 @@ class PaymentForm(forms.ModelForm):
         ).order_by('name')
         if not self.instance.pk:
             self.initial.setdefault('payment_date', timezone.now().strftime('%Y-%m-%dT%H:%M'))
+            cash = PaymentMethod.objects.filter(name__iexact='cash').values_list('pk', flat=True).first()
+            if cash:
+                self.initial.setdefault('payment_method', cash)
 
 
 class LiabilityPaymentForm(forms.Form):

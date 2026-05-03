@@ -70,6 +70,10 @@ class DebtReturnForm(forms.ModelForm):
         from django.utils import timezone
         if not self.instance.pk:
             self.initial.setdefault('return_date', timezone.now().strftime('%Y-%m-%dT%H:%M'))
+            from finance.models import PaymentMethod
+            cash = PaymentMethod.objects.filter(name__iexact='cash').values_list('pk', flat=True).first()
+            if cash:
+                self.initial.setdefault('payment_method', cash)
         if debt:
             self.fields['debt'].initial = debt.pk
             self.initial.setdefault('amount', debt.balance)
