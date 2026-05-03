@@ -4,19 +4,25 @@
 {% block page_title %}<h1 class="text-base font-semibold text-gray-800">Income Statement</h1>{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-bold text-gray-900">Income Statement</h1>
-    <div class="flex gap-2">
-        <a href="?period=month" class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors
-            {% if request.GET.period == 'month' or not request.GET.period %}bg-blue-600 text-white{% else %}border border-gray-300 text-gray-700 hover:bg-gray-50{% endif %}">Month</a>
-        <a href="?period=quarter" class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors
-            {% if request.GET.period == 'quarter' %}bg-blue-600 text-white{% else %}border border-gray-300 text-gray-700 hover:bg-gray-50{% endif %}">Quarter</a>
-        <a href="?period=year" class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors
-            {% if request.GET.period == 'year' %}bg-blue-600 text-white{% else %}border border-gray-300 text-gray-700 hover:bg-gray-50{% endif %}">Year</a>
-        <a href="?format=pdf{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}"
-           class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Income Statement</h1>
+        <p class="text-sm text-gray-400 mt-0.5">{{ period.label }}</p>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+        <form method="get" class="flex items-center gap-2 flex-wrap">
+            {{ form.preset }}
+            <span id="custom-range" class="flex items-center gap-1 {% if form.data.preset != 'custom' %}hidden{% endif %}">
+                {{ form.start }}
+                <span class="text-gray-400 text-sm">→</span>
+                {{ form.end }}
+            </span>
+            <button type="submit" class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700">Apply</button>
+        </form>
+        <a href="?{{ request.GET.urlencode }}&format=pdf"
+           class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-700">
             Export PDF
         </a>
-        <form method="post" action="{% url 'reports:generate_snapshot' %}" class="inline">
+        <form method="post" action="{% url 'reports:generate_snapshot' %}" class="inline flex gap-1">
             {% csrf_token %}
             <input type="hidden" name="report_code" value="D1">
             <input type="hidden" name="period_start" value="{{ data.period_start }}">
@@ -30,6 +36,11 @@
         </form>
     </div>
 </div>
+<script>
+document.getElementById('id_preset').addEventListener('change', function() {
+    document.getElementById('custom-range').classList.toggle('hidden', this.value !== 'custom');
+});
+</script>
 
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden max-w-2xl">
     <!-- Report header -->
