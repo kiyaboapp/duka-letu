@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, CreateView, DetailView
 from django.urls import reverse_lazy
 from django.contrib import messages
@@ -23,7 +23,18 @@ class DebtorCreateView(CreateView):
     model = Debtor
     form_class = DebtorForm
     template_name = 'credit/debtor_form.html'
-    success_url = reverse_lazy('credit:index')
+
+    def get_success_url(self):
+        next_url = self.request.GET.get('next') or self.request.POST.get('next')
+        if next_url:
+            # append new debtor pk so the credit form can pre-select it
+            from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+            parsed = urlparse(next_url)
+            params = parse_qs(parsed.query)
+            params['debtor'] = [str(self.object.pk)]
+            new_query = urlencode({k: v[0] for k, v in params.items()})
+            return urlunparse(parsed._replace(query=new_query))
+        return reverse_lazy('credit:index')
 
 
 class DebtCreateView(CreateView):
@@ -32,8 +43,51 @@ class DebtCreateView(CreateView):
     template_name = 'credit/debt_form.html'
     success_url = reverse_lazy('credit:index')
 
+    def get_initial(self):
+        initial = super().get_initial()
+        spec_id = self.request.GET.get('product_spec')
+        debtor_id = self.request.GET.get('debtor')
+        if spec_id:
+            try:
+                from catalog.models import ProductSpec
+                spec = ProductSpec.objects.select_related('product', 'spec_value').get(pk=spec_id)
+                initial['product_spec'] = spec.pk
+                price = spec.default_selling_price or spec.cached_wac or None
+                if price:
+                    initial['unit_price'] = price
+            except Exception:
+                pass
+        if debtor_id:
+            initial['debtor'] = debtor_id
+        return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        spec_id = self.request.GET.get('product_spec')
+        debtor_id = self.request.GET.get('debtor')
+        if spec_id:
+            try:
+                from catalog.models import ProductSpec
+                spec = ProductSpec.objects.select_related('product', 'spec_value').get(pk=spec_id)
+                context['spec'] = spec
+                context['fill_price'] = spec.default_selling_price or spec.cached_wac
+            except Exception:
+                pass
+        if debtor_id:
+            try:
+                context['selected_debtor'] = Debtor.objects.get(pk=debtor_id)
+            except Exception:
+                pass
+        return context
+
+    def get_success_url(self):
+        debtor_id = self.request.POST.get('debtor')
+        if debtor_id:
+            return reverse_lazy('credit:debtor_detail', kwargs={'pk': debtor_id})
+        return reverse_lazy('credit:index')
+
     def form_valid(self, form):
-        messages.success(self.request, 'Credit sale recorded successfully.')
+        messages.success(self.request, 'Credit sale recorded.')
         return super().form_valid(form)
 
 

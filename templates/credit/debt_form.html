@@ -1,39 +1,365 @@
 {% extends 'base.html' %}
+{% load fmt humanize %}
 {% block title %}Credit Sale — Kiyabo Duka{% endblock %}
 {% block page_title %}<h1 class="text-base font-semibold text-gray-800">Credit Sale</h1>{% endblock %}
+
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-bold text-gray-900">Record Credit Sale</h1>
-</div>
-<div class="max-w-2xl">
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div class="px-6 py-4 border-b border-gray-100">
-            <h2 class="text-base font-semibold text-gray-800">Credit Sale Details</h2>
-            <p class="text-sm text-gray-500 mt-0.5">Stock will be reduced. A receivable will be created.</p>
-        </div>
-        <div class="p-6">
-            <form method="post" novalidate>
-                {% csrf_token %}
-                {% for field in form %}
-                <div class="mb-4">
-                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                        {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
-                    </label>
-                    {{ field }}
-                    {% if field.errors %}{% for error in field.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}{% endif %}
-                </div>
-                {% endfor %}
-                {% if form.non_field_errors %}
-                <div class="mb-4 p-3 rounded-md bg-red-50 border border-red-200">
-                    {% for error in form.non_field_errors %}<p class="text-sm text-red-700">{{ error }}</p>{% endfor %}
-                </div>
-                {% endif %}
-                <div class="flex items-center justify-between pt-4 border-t border-gray-100">
-                    <a href="{% url 'credit:index' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">Cancel</a>
-                    <button type="submit" class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors">Save Credit Sale</button>
-                </div>
-            </form>
-        </div>
+<style>
+#cs-shell, #cs-shell * { box-sizing: border-box; }
+#cs-shell {
+  display: grid; grid-template-columns: 1fr;
+  grid-template-areas: "topbar" "left" "right" "actions";
+  max-width: 900px; margin: 0 auto;
+}
+@media (min-width: 768px) {
+  #cs-shell {
+    grid-template-columns: minmax(0,1.2fr) minmax(0,0.8fr);
+    grid-template-areas: "topbar topbar" "left right" "actions actions";
+    border: 1px solid #e2e1dc; border-radius: 12px; overflow: hidden;
+  }
+}
+#cs-topbar {
+  grid-area: topbar; display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 18px; background: #fff; border-bottom: 1px solid #e2e1dc;
+}
+#cs-topbar .cs-back { font-size: 13px; color: #888; text-decoration: none; }
+#cs-topbar .cs-back:hover { color: #111; }
+#cs-topbar .cs-title { font-size: 15px; font-weight: 600; color: #111; }
+#cs-left  { grid-area: left;  background: #fff; border-bottom: 1px solid #e2e1dc; }
+#cs-right { grid-area: right; background: #f7f6f2; }
+@media (min-width: 768px) {
+  #cs-left  { border-bottom: none; border-right: 1px solid #e2e1dc; }
+  #cs-right { border-bottom: none; }
+}
+.cs-section { padding: 14px 18px; border-bottom: 1px solid #ece9e3; }
+.cs-section:last-child { border-bottom: none; }
+.cs-label { font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: #999; margin-bottom: 8px; display: block; }
+.cs-req { color: #c0392b; }
+.cs-field {
+  width: 100%; height: 40px; border: 1.5px solid #d8d6d0; border-radius: 8px;
+  padding: 0 11px; font-size: 14px; color: #111; background: #fff; outline: none;
+  font-family: inherit; transition: border-color .15s, box-shadow .15s; appearance: none;
+}
+.cs-field:focus { border-color: #111; box-shadow: 0 0 0 3px rgba(0,0,0,.07); }
+select.cs-field {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center; padding-right: 30px; cursor: pointer;
+}
+textarea.cs-field { height: 60px; padding: 9px 11px; resize: none; line-height: 1.5; }
+.cs-num {
+  width: 110px; height: 40px; border: 1.5px solid #d8d6d0; border-radius: 8px;
+  text-align: center; font-size: 15px; font-weight: 500; color: #111;
+  background: #fff; outline: none; font-family: inherit; -moz-appearance: textfield;
+  transition: border-color .15s;
+}
+.cs-num::-webkit-outer-spin-button, .cs-num::-webkit-inner-spin-button { -webkit-appearance: none; }
+.cs-num:focus { border-color: #111; box-shadow: 0 0 0 3px rgba(0,0,0,.07); }
+.cs-nb {
+  height: 27px; padding: 0 9px; background: none; border: 1px solid #d8d6d0; border-radius: 5px;
+  font-size: 12px; font-weight: 500; color: #555; font-family: inherit; cursor: pointer; transition: all .12s;
+}
+.cs-nb:hover { background: #f7f6f2; border-color: #111; color: #111; }
+.cs-nb.neg:hover { background: #fdeaea; border-color: #9b1f1f; color: #9b1f1f; }
+.cs-nudge { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+.cs-total-card { background: #7c3aed; border-radius: 10px; padding: 14px 16px; }
+.cs-total-lbl { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+.cs-total-amt { font-size: 28px; font-weight: 600; color: #fff; letter-spacing: -.02em; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.cs-total-brk { font-size: 12px; color: rgba(255,255,255,.4); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.cs-hint { font-size: 11px; color: #888; margin-top: 4px; }
+.cs-hint strong { color: #555; }
+.cs-err { font-size: 12px; color: #9b1f1f; margin-top: 4px; }
+.cs-err-box { background: #fdeaea; border: 1px solid #f5c2c2; border-radius: 7px; padding: 10px 13px; margin: 0 18px 12px; }
+#cs-actions {
+  grid-area: actions; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 13px 18px; background: #f7f6f2; border-top: 1px solid #e2e1dc;
+}
+@media (min-width: 768px) { #cs-actions { border-radius: 0 0 12px 12px; } }
+.cs-btn-cancel {
+  height: 40px; padding: 0 18px; background: none; border: 1.5px solid #d8d6d0; border-radius: 8px;
+  font-size: 13px; font-weight: 500; color: #555; cursor: pointer; font-family: inherit;
+  text-decoration: none; display: inline-flex; align-items: center; transition: all .15s;
+}
+.cs-btn-cancel:hover { background: #ece9e3; color: #111; }
+.cs-btn-save {
+  height: 40px; padding: 0 24px; flex: 1; max-width: 200px;
+  background: #7c3aed; border: none; border-radius: 8px;
+  font-size: 14px; font-weight: 600; color: #fff; cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.cs-btn-save:disabled { opacity: .35; cursor: not-allowed; }
+.cs-btn-save:not(:disabled):hover { background: #6d28d9; }
+.sb { border-radius: 3px; padding: 2px 6px; font-size: 11px; font-weight: 600; }
+.sb-ok { background: #e8f5ee; color: #1a6b3c; }
+.sb-low { background: #fef3e2; color: #a05c00; }
+.sb-none { background: #fdeaea; color: #9b1f1f; }
+/* product search */
+.cs-search { width: 100%; height: 40px; border: 1.5px solid #d8d6d0; border-radius: 8px; padding: 0 12px; font-size: 14px; color: #111; background: #fff; outline: none; font-family: inherit; transition: border-color .15s; }
+.cs-search:focus { border-color: #111; box-shadow: 0 0 0 3px rgba(0,0,0,.07); }
+#cs-results { position: absolute; z-index: 50; width: 100%; top: calc(100% + 3px); left: 0; background: #fff; border: 1px solid #d8d6d0; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.1); max-height: 220px; overflow-y: auto; display: none; }
+.cs-result-item { padding: 9px 13px; cursor: pointer; border-bottom: .5px solid #ece9e3; transition: background .1s; }
+.cs-result-item:last-child { border-bottom: none; }
+.cs-result-item:hover { background: #f7f6f2; }
+.cs-chip { display: flex; align-items: center; gap: 8px; background: #f7f6f2; border: 1.5px solid #d8d6d0; border-radius: 8px; padding: 9px 12px; }
+.cs-chip-name { font-size: 14px; font-weight: 500; color: #111; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-chip-clear { font-size: 11px; color: #888; background: none; border: none; cursor: pointer; padding: 3px 7px; border-radius: 4px; font-family: inherit; transition: all .15s; }
+.cs-chip-clear:hover { background: #fdeaea; color: #9b1f1f; }
+</style>
+
+<form method="post" id="cs-form" novalidate>
+{% csrf_token %}
+<input type="hidden" name="product_spec" id="id_product_spec" value="{{ form.product_spec.value|default:'' }}">
+
+<div id="cs-shell">
+
+  <!-- Topbar -->
+  <div id="cs-topbar">
+    {% if selected_debtor %}
+    <a href="{% url 'credit:debtor_detail' selected_debtor.pk %}" class="cs-back">← {{ selected_debtor.name }}</a>
+    {% else %}
+    <a href="{% url 'credit:index' %}" class="cs-back">← Debtors</a>
+    {% endif %}
+    <span class="cs-title">New Credit Sale</span>
+    <span></span>
+  </div>
+
+  <!-- LEFT -->
+  <div id="cs-left">
+
+    <!-- Debtor -->
+    <div class="cs-section">
+      <div class="flex items-center justify-between mb-2">
+        <span class="cs-label" style="margin-bottom:0">Debtor <span class="cs-req">*</span></span>
+        <a href="{% url 'credit:debtor_create' %}?next={{ request.get_full_path|urlencode }}"
+           class="text-xs text-purple-600 hover:text-purple-800 font-medium">+ New Debtor</a>
+      </div>
+      {{ form.debtor }}
+      {% if form.debtor.errors %}<p class="cs-err">{{ form.debtor.errors.0 }}</p>{% endif %}
     </div>
+
+    <!-- Product -->
+    <div class="cs-section">
+      <span class="cs-label">Product <span class="cs-req">*</span></span>
+      <div style="position:relative" id="cs-search-wrap">
+        <input type="text" id="cs-product-search" autocomplete="off" class="cs-search"
+               placeholder="Search by name, brand or variant…"
+               {% if spec %}style="display:none"{% endif %}>
+        <div id="cs-results"></div>
+      </div>
+      <div id="cs-selected-product" class="cs-chip" {% if not spec %}style="display:none"{% endif %}>
+        <span class="cs-chip-name" id="cs-selected-label">{% if spec %}{{ spec }}{% endif %}</span>
+        {% if spec %}<span class="sb {% if spec.current_stock <= 0 %}sb-none{% elif spec.needs_reorder %}sb-low{% else %}sb-ok{% endif %}" id="cs-selected-stock">{{ spec.current_stock }} in stock</span>{% else %}<span class="sb" id="cs-selected-stock"></span>{% endif %}
+        <button type="button" class="cs-chip-clear" onclick="clearProduct()">✕ change</button>
+      </div>
+      {% if spec %}
+      <p class="cs-hint">WAC: <strong>{{ spec.cached_wac|tzs }}</strong>{% if spec.default_selling_price %} &middot; Default price: <strong>{{ spec.default_selling_price|tzs }}</strong>{% endif %}</p>
+      {% endif %}
+      {% if form.product_spec.errors %}<p class="cs-err">{{ form.product_spec.errors.0 }}</p>{% endif %}
+    </div>
+
+    <!-- Quantity -->
+    <div class="cs-section">
+      <label for="{{ form.quantity.id_for_label }}" class="cs-label">Quantity <span class="cs-req">*</span></label>
+      <div style="display:flex;align-items:center;gap:7px">
+        <button type="button" class="cs-nb neg" onclick="nudge('qty',-1)">−</button>
+        {{ form.quantity }}
+        <button type="button" class="cs-nb" onclick="nudge('qty',1)">+</button>
+      </div>
+      {% if form.quantity.errors %}<p class="cs-err">{{ form.quantity.errors.0 }}</p>{% endif %}
+    </div>
+
+    <!-- Unit Price -->
+    <div class="cs-section">
+      <label for="{{ form.unit_price.id_for_label }}" class="cs-label">
+        Unit Price <span class="cs-req">*</span>
+        <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;color:#bbb">(TZS)</span>
+      </label>
+      {{ form.unit_price }}
+      <div class="cs-nudge">
+        <button type="button" class="cs-nb neg" onclick="nudge('price',-10000)">−10k</button>
+        <button type="button" class="cs-nb neg" onclick="nudge('price',-5000)">−5k</button>
+        <button type="button" class="cs-nb neg" onclick="nudge('price',-1000)">−1k</button>
+        <button type="button" class="cs-nb neg" onclick="nudge('price',-500)">−500</button>
+        <button type="button" class="cs-nb" onclick="nudge('price',500)">+500</button>
+        <button type="button" class="cs-nb" onclick="nudge('price',1000)">+1k</button>
+        <button type="button" class="cs-nb" onclick="nudge('price',5000)">+5k</button>
+        <button type="button" class="cs-nb" onclick="nudge('price',10000)">+10k</button>
+      </div>
+      {% if form.unit_price.errors %}<p class="cs-err">{{ form.unit_price.errors.0 }}</p>{% endif %}
+    </div>
+
+  </div><!-- /cs-left -->
+
+  <!-- RIGHT -->
+  <div id="cs-right">
+
+    <!-- Total -->
+    <div class="cs-section">
+      <div class="cs-total-card">
+        <div class="cs-total-lbl">Credit Amount</div>
+        <div class="cs-total-amt" id="cs-total">—</div>
+        <div class="cs-total-brk" id="cs-total-brk"></div>
+      </div>
+    </div>
+
+    <!-- Discount -->
+    <div class="cs-section">
+      <label for="{{ form.discount.id_for_label }}" class="cs-label">Discount <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;color:#bbb">(TZS)</span></label>
+      {{ form.discount }}
+      <div class="cs-nudge">
+        <button type="button" class="cs-nb neg" onclick="nudge('disc',-5000)">−5k</button>
+        <button type="button" class="cs-nb neg" onclick="nudge('disc',-1000)">−1k</button>
+        <button type="button" class="cs-nb neg" onclick="nudge('disc',-500)">−500</button>
+        <button type="button" class="cs-nb" onclick="nudge('disc',500)">+500</button>
+        <button type="button" class="cs-nb" onclick="nudge('disc',1000)">+1k</button>
+        <button type="button" class="cs-nb" onclick="nudge('disc',5000)">+5k</button>
+      </div>
+      {% if form.discount.errors %}<p class="cs-err">{{ form.discount.errors.0 }}</p>{% endif %}
+    </div>
+
+    <!-- Sale Date -->
+    <div class="cs-section">
+      <label for="{{ form.sale_date.id_for_label }}" class="cs-label">Sale Date <span class="cs-req">*</span></label>
+      {{ form.sale_date }}
+      {% if form.sale_date.errors %}<p class="cs-err">{{ form.sale_date.errors.0 }}</p>{% endif %}
+    </div>
+
+    <!-- Expected Payment -->
+    <div class="cs-section">
+      <label for="{{ form.expected_payment_date.id_for_label }}" class="cs-label">Expected Payment</label>
+      {{ form.expected_payment_date }}
+      {% if form.expected_payment_date.errors %}<p class="cs-err">{{ form.expected_payment_date.errors.0 }}</p>{% endif %}
+    </div>
+
+    {% if form.non_field_errors %}
+    <div class="cs-err-box">{% for e in form.non_field_errors %}<p style="font-size:13px;color:#7a1515">{{ e }}</p>{% endfor %}</div>
+    {% endif %}
+
+  </div><!-- /cs-right -->
+
+  <!-- Actions -->
+  <div id="cs-actions">
+    {% if selected_debtor %}
+    <a href="{% url 'credit:debtor_detail' selected_debtor.pk %}" class="cs-btn-cancel">Cancel</a>
+    {% else %}
+    <a href="{% url 'credit:index' %}" class="cs-btn-cancel">Cancel</a>
+    {% endif %}
+    <button type="submit" id="cs-submit" class="cs-btn-save" {% if not spec %}disabled{% endif %}>Save Credit Sale</button>
+  </div>
+
 </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SEARCH_URL = "{% url 'catalog:product_spec_search' %}";
+const specInput   = document.getElementById('id_product_spec');
+const searchWrap  = document.getElementById('cs-search-wrap');
+const searchInput = document.getElementById('cs-product-search');
+const resultsBox  = document.getElementById('cs-results');
+const selectedDiv = document.getElementById('cs-selected-product');
+const selectedLbl = document.getElementById('cs-selected-label');
+const selectedStk = document.getElementById('cs-selected-stock');
+const submitBtn   = document.getElementById('cs-submit');
+const qtyInput    = document.getElementById('{{ form.quantity.id_for_label }}');
+const priceInput  = document.getElementById('{{ form.unit_price.id_for_label }}');
+const discInput   = document.getElementById('{{ form.discount.id_for_label }}');
+const totalEl     = document.getElementById('cs-total');
+const totalBrkEl  = document.getElementById('cs-total-brk');
+
+// Style Django inputs
+if (qtyInput)   { qtyInput.className   = 'cs-num'; qtyInput.setAttribute('min','1'); qtyInput.setAttribute('step','1'); }
+if (priceInput) { priceInput.className = 'cs-num'; priceInput.style.width = '130px'; }
+if (discInput)  { discInput.className  = 'cs-num'; discInput.style.width = '130px'; }
+document.querySelectorAll('select.mt-1').forEach(el => el.classList.add('cs-field'));
+const debtorEl = document.getElementById('{{ form.debtor.id_for_label }}');
+if (debtorEl) debtorEl.classList.add('cs-field');
+const saleDateEl = document.getElementById('{{ form.sale_date.id_for_label }}');
+if (saleDateEl) { saleDateEl.classList.add('cs-field'); saleDateEl.style.width = 'auto'; }
+const expDateEl = document.getElementById('{{ form.expected_payment_date.id_for_label }}');
+if (expDateEl) { expDateEl.classList.add('cs-field'); expDateEl.style.width = 'auto'; }
+
+// Product search
+let _t;
+if (searchInput) {
+  searchInput.addEventListener('input', () => {
+    clearTimeout(_t);
+    const q = searchInput.value.trim();
+    if (!q) { resultsBox.style.display = 'none'; return; }
+    _t = setTimeout(() => fetch(`${SEARCH_URL}?q=${encodeURIComponent(q)}`)
+      .then(r => r.json()).then(d => renderResults(d.results)), 200);
+  });
+}
+
+function renderResults(results) {
+  resultsBox.innerHTML = '';
+  if (!results.length) {
+    resultsBox.innerHTML = '<div style="padding:10px 13px;font-size:13px;color:#aaa">No products found</div>';
+  } else {
+    results.forEach(r => {
+      const d = document.createElement('div');
+      d.className = 'cs-result-item';
+      const sc = r.stock <= 0 ? 'sb-none' : r.stock <= 5 ? 'sb-low' : 'sb-ok';
+      d.innerHTML = `<div style="font-size:13px;font-weight:500;color:#111">${r.label}</div>
+        <div style="font-size:12px;color:#888;margin-top:2px;display:flex;gap:8px">
+          <span class="sb ${sc}">${r.stock <= 0 ? 'Out of stock' : r.stock + ' in stock'}</span>
+          ${r.selling_price ? '<span>TZS ' + Number(r.selling_price).toLocaleString() + '</span>' : (r.cost_price ? '<span>WAC: TZS ' + Number(r.cost_price).toLocaleString() + '</span>' : '')}
+        </div>`;
+      d.addEventListener('mousedown', e => { e.preventDefault(); selectProduct(r); });
+      resultsBox.appendChild(d);
+    });
+  }
+  resultsBox.style.display = 'block';
+}
+
+function selectProduct(r) {
+  specInput.value = r.id;
+  selectedLbl.textContent = r.label;
+  const sc = r.stock <= 0 ? 'sb-none' : r.stock <= 5 ? 'sb-low' : 'sb-ok';
+  selectedStk.className = 'sb ' + sc;
+  selectedStk.textContent = r.stock <= 0 ? 'Out of stock' : r.stock + ' in stock';
+  selectedDiv.style.display = 'flex';
+  if (searchInput) searchInput.style.display = 'none';
+  resultsBox.style.display = 'none';
+  if (searchInput) searchInput.value = '';
+  const fillPrice = r.selling_price || r.cost_price;
+  if (fillPrice && priceInput) priceInput.value = fillPrice;
+  submitBtn.disabled = false;
+  updateTotal();
+}
+
+function clearProduct() {
+  specInput.value = '';
+  selectedDiv.style.display = 'none';
+  if (searchInput) { searchInput.style.display = ''; searchInput.value = ''; searchInput.focus(); }
+  submitBtn.disabled = true;
+  totalEl.textContent = '—'; totalBrkEl.textContent = '';
+}
+
+function nudge(f, d) {
+  const el = f === 'qty' ? qtyInput : f === 'price' ? priceInput : discInput;
+  const min = f === 'qty' ? 1 : 0;
+  el.value = Math.max(min, Math.round((parseFloat(el.value) || 0) + d));
+  updateTotal();
+}
+
+function updateTotal() {
+  const qty = parseFloat(qtyInput?.value) || 0;
+  const price = parseFloat(priceInput?.value) || 0;
+  const disc = parseFloat(discInput?.value) || 0;
+  const total = Math.max(0, qty * price - disc);
+  if (qty > 0 && price > 0) {
+    totalEl.textContent = 'TZS ' + Math.round(total).toLocaleString();
+    totalBrkEl.textContent = disc > 0
+      ? `${qty} × ${Math.round(price).toLocaleString()} − ${Math.round(disc).toLocaleString()}`
+      : `${qty} × ${Math.round(price).toLocaleString()}`;
+  } else { totalEl.textContent = '—'; totalBrkEl.textContent = ''; }
+}
+
+[qtyInput, priceInput, discInput].forEach(el => el?.addEventListener('input', updateTotal));
+document.addEventListener('click', e => { if (!searchWrap?.contains(e.target)) resultsBox.style.display = 'none'; });
+
+// Init total if pre-filled
+updateTotal();
+</script>
 {% endblock %}
