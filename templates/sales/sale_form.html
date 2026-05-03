@@ -323,29 +323,12 @@ textarea.s-field { height: 70px; padding: 9px 11px; resize: none; line-height: 1
       {% if form.discount.errors %}<p class="s-err">{{ form.discount.errors.0 }}</p>{% endif %}
     </div>
 
-    <!-- Payment method — pill UI synced to Django field -->
+    <!-- Payment method — pill UI built from Django select options -->
     <div class="s-section">
       <span class="s-label">Payment <span class="s-required">*</span></span>
-      <div class="s-pay-grid">
-        <div class="s-pay-opt">
-          <input type="radio" name="payment_method_ui" id="pm-cash" value="cash" checked>
-          <label for="pm-cash">Cash</label>
-        </div>
-        <div class="s-pay-opt">
-          <input type="radio" name="payment_method_ui" id="pm-mpesa" value="mpesa">
-          <label for="pm-mpesa">M-Pesa</label>
-        </div>
-        <div class="s-pay-opt">
-          <input type="radio" name="payment_method_ui" id="pm-card" value="card">
-          <label for="pm-card">Card</label>
-        </div>
-        <div class="s-pay-opt">
-          <input type="radio" name="payment_method_ui" id="pm-credit" value="credit">
-          <label for="pm-credit">Credit</label>
-        </div>
-      </div>
-      <!-- Django's actual widget, hidden — value synced via JS below -->
+      <!-- Django's actual widget, hidden — pills below sync to it -->
       <div style="display:none">{{ form.payment_method }}</div>
+      <div class="s-pay-grid" id="pm-pills"></div>
       {% if form.payment_method.errors %}<p class="s-err">{{ form.payment_method.errors.0 }}</p>{% endif %}
     </div>
 
@@ -414,17 +397,25 @@ const totalBreak    = document.getElementById('total-breakdown');
   if (dateEl) { dateEl.classList.add('s-field'); dateEl.style.width = 'auto'; }
 })();
 
-// ── Payment pills → sync to Django select ────────────────────────────────────
+// ── Payment pills — built from Django select options ─────────────────────────
 const djangoPayEl = document.getElementById('{{ form.payment_method.id_for_label }}');
-document.querySelectorAll('input[name="payment_method_ui"]').forEach(r => {
-  // Pre-select if Django already has a value (e.g. form re-render after error)
-  if (djangoPayEl && djangoPayEl.value && djangoPayEl.value === r.value) r.checked = true;
-  r.addEventListener('change', () => { if (djangoPayEl) djangoPayEl.value = r.value; });
-});
-// Set Django field to default on load
-if (djangoPayEl && !djangoPayEl.value) {
-  const checked = document.querySelector('input[name="payment_method_ui"]:checked');
-  if (checked) djangoPayEl.value = checked.value;
+const pillsGrid   = document.getElementById('pm-pills');
+
+if (djangoPayEl && pillsGrid) {
+  Array.from(djangoPayEl.options).forEach((opt, i) => {
+    if (!opt.value) return; // skip empty option
+    const wrap  = document.createElement('div');
+    wrap.className = 's-pay-opt';
+    const id = 'pm-opt-' + i;
+    const checked = (opt.selected || (i === 1 && !djangoPayEl.value)) ? 'checked' : '';
+    wrap.innerHTML = `<input type="radio" name="payment_method_ui" id="${id}" value="${opt.value}" ${checked}>
+                      <label for="${id}">${opt.text}</label>`;
+    pillsGrid.appendChild(wrap);
+    if (checked) djangoPayEl.value = opt.value;
+  });
+  pillsGrid.addEventListener('change', e => {
+    if (e.target.name === 'payment_method_ui') djangoPayEl.value = e.target.value;
+  });
 }
 
 // ── Product search ────────────────────────────────────────────────────────────
@@ -476,7 +467,9 @@ function selectProduct(r) {
   searchInput.style.display = 'none';
   resultsBox.style.display  = 'none';
   searchInput.value = '';
-  if (r.selling_price) priceInput.value = r.selling_price;
+  // Fill price: prefer selling_price, fall back to cost_price (WAC)
+  const fillPrice = r.selling_price || r.cost_price;
+  if (fillPrice) priceInput.value = fillPrice;
   submitBtn.disabled = false;
   updateTotal();
 }
