@@ -80,25 +80,40 @@ class SaleCreateView(CreateView):
     template_name = 'sales/sale_form.html'
     success_url = reverse_lazy('sales:sale_list')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        # Pre-load spec data if coming from product detail
+    def _get_spec(self):
         spec_id = self.request.GET.get('product_spec') or self.request.POST.get('product_spec')
         if spec_id:
             try:
                 from catalog.models import ProductSpec
-                spec = ProductSpec.objects.select_related(
+                return ProductSpec.objects.select_related(
                     'product', 'product__brand', 'spec_value'
                 ).get(pk=spec_id)
-                context['prefill_spec'] = {
-                    'id': spec.pk,
-                    'label': str(spec),
-                    'stock': spec.current_stock,
-                    'selling_price': str(spec.default_selling_price or ''),
-                    'cost_price': str(spec.default_cost_price or ''),
-                }
             except Exception:
                 pass
+        return None
+
+    def get_initial(self):
+        initial = super().get_initial()
+        spec = self._get_spec()
+        if spec:
+            initial['product_spec'] = spec.pk
+            price = spec.default_selling_price or spec.cached_wac or None
+            if price:
+                initial['unit_price'] = price
+        return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        spec = self._get_spec()
+        if spec:
+            price = spec.default_selling_price or spec.cached_wac or None
+            context['prefill_spec'] = {
+                'id': spec.pk,
+                'label': str(spec),
+                'stock': spec.current_stock,
+                'selling_price': str(price or ''),
+                'cost_price': str(spec.cached_wac or ''),
+            }
         return context
 
     def form_valid(self, form):
