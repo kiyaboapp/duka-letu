@@ -5,6 +5,8 @@ from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from decimal import Decimal
 from apps.core.models import TimestampedModel
+from datetime import timedelta
+import calendar
 
 
 class PaymentMethod(TimestampedModel):
@@ -17,8 +19,34 @@ class PaymentMethod(TimestampedModel):
         return self.name
 
     def get_absolute_url(self):
-        from django.urls import reverse
-        return reverse('finance:payment_method_detail', kwargs={'pk': self.pk})
+        return self.get_action_url('detail')
+
+    def get_edit_url(self):
+        return self.get_action_url('edit')
+
+    def get_delete_url(self):
+        return self.get_action_url('delete')
+
+    def can_delete(self):
+        # Prevent deletion if used in transactions
+        return not hasattr(self, 'expenses') or self.expenses.count() == 0
+
+    def get_transaction_count(self):
+        """Count of transactions using this payment method."""
+        from finance.models import Expense, Payment
+        expense_count = getattr(self, 'expenses', None)
+        if expense_count:
+            return expense_count.count()
+        return 0
+
+    def get_status_badge(self):
+        count = self.get_transaction_count()
+        if count > 100:
+            return {'class': 'bg-blue-100 text-blue-800', 'text': f'Active ({count} txns)'}
+        elif count > 0:
+            return {'class': 'bg-green-100 text-green-800', 'text': f'In Use ({count})'}
+        else:
+            return {'class': 'bg-gray-100 text-gray-800', 'text': 'Unused'}
 
 
 class ExpenseType(TimestampedModel):
@@ -31,8 +59,44 @@ class ExpenseType(TimestampedModel):
         return self.name
 
     def get_absolute_url(self):
-        from django.urls import reverse
-        return reverse('finance:expense_type_detail', kwargs={'pk': self.pk})
+        return self.get_action_url('detail')
+
+    def get_edit_url(self):
+        return self.get_action_url('edit')
+
+    def get_delete_url(self):
+        return self.get_action_url('delete')
+
+    def can_delete(self):
+        # Check if any items exist
+        return not hasattr(self, 'items') or self.items.count() == 0
+
+    def get_item_count(self):
+        return getattr(self, 'items', None).count() if hasattr(self, 'items') else 0
+
+    def get_total_expenses(self, date_from=None, date_to=None):
+        """Calculate total expenses for this type within date range."""
+        qs = getattr(self, 'items', None)
+        if not qs:
+            return Decimal('0')
+        
+        total = Decimal('0')
+        for item in qs.all():
+            item_total = item.rates.filter(
+                effective_from__lte=timezone.now().date()
+            ).order_by('-effective_from').first()
+            if item_total:
+                total += item_total.amount
+        return total
+
+    def get_status_badge(self):
+        count = self.get_item_count()
+        if count > 5:
+            return {'class': 'bg-purple-100 text-purple-800', 'text': f'High Volume ({count} items)'}
+        elif count > 0:
+            return {'class': 'bg-green-100 text-green-800', 'text': f'Active ({count})'}
+        else:
+            return {'class': 'bg-yellow-100 text-yellow-800', 'text': 'No Items'}
 
 
 class ExpenseItem(TimestampedModel):
@@ -51,8 +115,21 @@ class ExpenseItem(TimestampedModel):
         return f"{self.expense_type.name} — {self.name}"
 
     def get_absolute_url(self):
-        from django.urls import reverse
-        return reverse('finance:expense_item_detail', kwargs={'pk': self.pk})
+        return self.get_action_url('detail')
+
+    def get_edit_url(self):
+        return self.get_action_url('edit')
+
+    def get_delete_url(self):
+        return self.get_action_url('delete')
+
+    def can_edit(self):
+        return self.is_active
+
+    def can_delete(self):
+        # Can't delete if has rates or obligations
+        return not (hasattr(self, 'rates') and self.rates.count() > 0) and \
+               not (hasattr(self, 'obligations') and self.obligations.count() > 0)
 
     def current_rate(self) -> Decimal:
         """Returns the rate effective as of today."""
@@ -60,6 +137,39 @@ class ExpenseItem(TimestampedModel):
             effective_from__lte=timezone.now().date()
         ).order_by('-effective_from').first()
         return rate.amount if rate else Decimal('0')
+
+    def get_status_badge(self):
+        if not self.is_active:
+            return {'class': 'bg-gray-100 text-gray-800', 'text': 'Inactive'}
+        elif hasattr(self, 'obligations') and self.obligations.filter(status='OVERDUE').exists():
+            return {'class': 'bg-red-100 text-red-800', 'text': 'Overdue'}
+        elif hasattr(self, 'obligations') and self.obligations.filter(status='PENDING').exists():
+            return {'class': 'bg-yellow-100 text-yellow-800', 'text': 'Pending'}
+        else:
+            return {'class': 'bg-green-100 text-green-800', 'text': 'Active'}
+
+    def get_next_due_date(self):
+        """Get next obligation due date for this item."""
+        if hasattr(self, 'obligations'):
+            next_due = self.obligations.filter(
+                status__in=['PENDING', 'PARTIAL'],
+                due_date__gte=timezone.now().date()
+            ).order_by('due_date').first()
+            return next_due.due_date if next_due else None
+        return None
+
+    def get_total_paid_this_month(self):
+        """Calculate total payments for this item in current month."""
+        from django.db.models import Sum
+        today = timezone.now().date()
+        month_start = today.replace(day=1)
+        
+        if hasattr(self, 'payments'):
+            total = self.payments.filter(
+                payment_date__gte=month_start
+            ).aggregate(total=Sum('amount_paid'))['total']
+            return total or Decimal('0')
+        return Decimal('0')
 
 
 class ExpenseRate(TimestampedModel):
@@ -76,8 +186,21 @@ class ExpenseRate(TimestampedModel):
         return f"{self.expense_item.name} — {self.amount} from {self.effective_from}"
 
     def get_absolute_url(self):
-        from django.urls import reverse
-        return reverse('finance:expense_rate_detail', kwargs={'pk': self.pk})
+        return self.get_action_url('detail')
+
+    def get_edit_url(self):
+        return self.get_action_url('edit')
+
+    def get_delete_url(self):
+        return self.get_action_url('delete')
+
+    def can_delete(self):
+        # Can't delete if it's the only rate or currently effective
+        all_rates = self.expense_item.rates.all()
+        if all_rates.count() <= 1:
+            return False
+        current_rate = self.expense_item.current_rate()
+        return current_rate != self.amount
 
 
 class RecurrencePattern(TimestampedModel):
