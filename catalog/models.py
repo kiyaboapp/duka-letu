@@ -92,6 +92,18 @@ class Product(TimestampedModel):
     def category(self):
         return self.product_type.category
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('catalog:product_detail', kwargs={'pk': self.pk})
+
+    def get_update_url(self):
+        from django.urls import reverse
+        return reverse('catalog:product_update', kwargs={'pk': self.pk})
+
+    def get_delete_url(self):
+        from django.urls import reverse
+        return reverse('catalog:product_delete', kwargs={'pk': self.pk})
+
 
 class ProductSpec(TimestampedModel, ActionMixin):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='specs')

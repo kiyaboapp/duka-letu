@@ -106,13 +106,13 @@
                                 {{ action.icon }} {{ action.label }}
                             </a>
                             {% endfor %}
-                            <a href="{{ product.get_action_url:'view' }}"
+                            <a href="{{ product.get_absolute_url }}"
                                class="px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 rounded hover:bg-gray-100 transition-colors"
                                title="View details">
                                 👁️ View
                             </a>
                             {% if product.can_edit %}
-                            <a href="{{ product.get_action_url:'edit' }}"
+                            <a href="{{ product.get_update_url }}"
                                class="px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 transition-colors"
                                title="Edit product">
                                 ✏️ Edit

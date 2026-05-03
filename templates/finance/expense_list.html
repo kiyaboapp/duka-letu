@@ -5,7 +5,7 @@
 {% block content %}
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-bold text-gray-900">Expense Items</h1>
-    <a href="{{ ExpenseItem.get_action_url.create }}" class="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 flex items-center gap-2">
+    <a href="{% url 'finance:expense_create' %}" class="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 flex items-center gap-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
         New Expense
     </a>
@@ -114,7 +114,7 @@
                     <h3 class="mt-2 text-sm font-medium text-gray-900">No expense items</h3>
                     <p class="mt-1 text-sm text-gray-500">Get started by creating a new expense item.</p>
                     <div class="mt-6">
-                        <a href="{{ ExpenseItem.get_action_url.create }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        <a href="{% url 'finance:expense_create' %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                             <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             New Expense Item
                         </a>

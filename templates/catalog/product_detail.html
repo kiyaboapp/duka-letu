@@ -36,14 +36,14 @@
     
     <!-- Context-aware action buttons from ActionMixin -->
     {% if product.can_edit %}
-    <a href="{{ product.get_action_url:'edit' }}" 
+    <a href="{{ product.get_update_url }}" 
        class="inline-flex items-center gap-1.5 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
         ✏️ Edit
     </a>
     {% endif %}
     
     {% if product.can_delete %}
-    <a href="{{ product.get_action_url:'delete' }}" 
+    <a href="{{ product.get_delete_url }}" 
        class="inline-flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-md hover:bg-red-50 transition-colors">
         🗑️ Delete
     </a>
