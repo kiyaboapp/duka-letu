@@ -67,10 +67,12 @@ class DebtReturnForm(forms.ModelForm):
 
     def __init__(self, *args, debt=None, **kwargs):
         super().__init__(*args, **kwargs)
+        from django.utils import timezone
+        if not self.instance.pk:
+            self.initial.setdefault('return_date', timezone.now().strftime('%Y-%m-%dT%H:%M'))
         if debt:
             self.fields['debt'].initial = debt.pk
-            self.initial['amount'] = debt.balance
-            self.initial['return_date'] = __import__('django.utils.timezone', fromlist=['now']).now().strftime('%Y-%m-%dT%H:%M')
+            self.initial.setdefault('amount', debt.balance)
 
     def clean(self):
         cleaned_data = super().clean()

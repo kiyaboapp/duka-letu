@@ -68,7 +68,7 @@ def debtor_repay_partial(request, pk, debt_pk):
             messages.success(request, 'Repayment recorded.')
             return redirect('credit:debtor_detail', pk=pk)
     else:
-        form = DebtReturnForm(initial={'debt': debt, 'amount': debt.balance})
+        form = DebtReturnForm(debt=debt)
 
     template = 'credit/_repay_form.html' if is_htmx else 'credit/debt_return_form.html'
     return render(request, template, {'form': form, 'debt': debt, 'debtor': debtor})
