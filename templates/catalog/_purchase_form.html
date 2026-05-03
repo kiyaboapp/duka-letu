@@ -1,22 +1,50 @@
-{% load humanize %}
+{% load humanize fmt %}
 <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4" id="purchase-form-panel">
-    <h3 class="text-sm font-semibold text-green-800 mb-3">Record Purchase: {{ spec.product.name }}</h3>
-    <form method="post" action="{% url 'inventory:purchase_create' %}" class="flex flex-wrap items-end gap-3">
-        {% csrf_token %}
-        <input type="hidden" name="product_spec" value="{{ spec.pk }}">
-        {% for field in form %}
-        {% if field.name != 'product_spec' %}
+    <div class="flex items-start justify-between mb-3">
         <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">{{ field.label }}</label>
-            {{ field }}
-            {% if field.errors %}<p class="text-xs text-red-600">{{ field.errors.0 }}</p>{% endif %}
+            <h3 class="text-sm font-semibold text-green-800">Purchase: {{ spec.product.name }}{% if spec.spec_value %} — {{ spec.spec_value.value }}{% endif %}</h3>
+            <div class="flex gap-3 mt-1 text-xs text-gray-600">
+                <span>Current Stock: <strong>{{ spec.current_stock }}</strong></span>
+                <span>WAC: <strong>{{ spec.cached_wac|tzs }}</strong></span>
+                {% if spec.default_cost_price %}<span>Last Cost: <strong class="text-green-700">{{ spec.default_cost_price|tzs }}</strong></span>{% endif %}
+                {% if spec.default_selling_price %}<span>Selling Price: <strong>{{ spec.default_selling_price|tzs }}</strong></span>{% endif %}
+            </div>
         </div>
+        <button type="button" onclick="document.getElementById('purchase-form-panel').remove()" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+    </div>
+
+    <p class="text-xs text-gray-500 mb-3">This will create a new purchase order. You can add more items after saving.</p>
+
+    <form method="post" action="{% url 'inventory:purchase_create' %}" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {% csrf_token %}
+        {{ form.product_spec }}
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Quantity <span class="text-red-500">*</span></label>
+            {{ form.quantity }}
+            {% if form.quantity.errors %}<p class="text-xs text-red-600">{{ form.quantity.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">
+                Unit Cost <span class="text-red-500">*</span>
+                {% if spec.default_cost_price %}<span class="text-green-600 font-normal">(last: {{ spec.default_cost_price|tzs }})</span>{% endif %}
+            </label>
+            {{ form.unit_cost }}
+            {% if form.unit_cost.errors %}<p class="text-xs text-red-600">{{ form.unit_cost.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">
+                Suggested Selling Price
+                {% if spec.default_selling_price %}<span class="text-gray-400 font-normal">({{ spec.default_selling_price|tzs }})</span>{% endif %}
+            </label>
+            {{ form.suggested_selling_price }}
+        </div>
+        {% if form.non_field_errors %}
+        <div class="col-span-2 sm:col-span-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">{{ form.non_field_errors }}</div>
         {% endif %}
-        {% endfor %}
-        <div class="flex gap-2">
-            <button type="submit" class="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700">Record Purchase</button>
+        <div class="col-span-2 sm:col-span-3 flex gap-2 pt-1">
+            <button type="submit" class="px-4 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700">Record Purchase</button>
             <button type="button" onclick="document.getElementById('purchase-form-panel').remove()"
-                    class="px-3 py-1.5 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                    class="px-4 py-1.5 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
         </div>
     </form>
 </div>

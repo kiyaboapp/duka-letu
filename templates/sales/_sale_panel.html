@@ -1,22 +1,109 @@
 {% load humanize %}
 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4" id="sale-panel">
-    <h3 class="text-sm font-semibold text-blue-800 mb-3">New Sale</h3>
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-blue-800">New Sale</h3>
+        <button type="button" onclick="document.getElementById('sale-panel').remove()" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+    </div>
+
+    <!-- Product search -->
+    <div class="mb-3">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Search Product</label>
+        <input type="text" id="product-search" placeholder="Type product name…"
+               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500"
+               autocomplete="off">
+        <div id="product-results" class="mt-1 bg-white border border-gray-200 rounded-md shadow-sm hidden max-h-48 overflow-y-auto"></div>
+    </div>
+
+    <!-- Pre-fill info bar (shown after product selected) -->
+    <div id="product-info" class="hidden mb-3 p-2 bg-white border border-blue-200 rounded text-xs text-gray-600 flex gap-4"></div>
+
     <form hx-post="{% url 'sales:sale_create_partial' %}"
           hx-target="#sale-panel"
           hx-swap="outerHTML"
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {% csrf_token %}
-        {% for field in form %}
+        <!-- Hidden product_spec — filled by JS -->
+        {{ form.product_spec }}
         <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">{{ field.label }}</label>
-            {{ field }}
-            {% if field.errors %}<p class="text-xs text-red-600">{{ field.errors.0 }}</p>{% endif %}
+            <label class="block text-xs font-medium text-gray-600 mb-1">Quantity <span class="text-red-500">*</span></label>
+            {{ form.quantity }}
+            {% if form.quantity.errors %}<p class="text-xs text-red-600">{{ form.quantity.errors.0 }}</p>{% endif %}
         </div>
-        {% endfor %}
-        <div class="sm:col-span-2 lg:col-span-3 flex gap-2 mt-1">
-            <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">Record Sale</button>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Unit Price <span class="text-red-500">*</span></label>
+            {{ form.unit_price }}
+            {% if form.unit_price.errors %}<p class="text-xs text-red-600">{{ form.unit_price.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Discount</label>
+            {{ form.discount }}
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Payment Method</label>
+            {{ form.payment_method }}
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Date & Time</label>
+            {{ form.sale_date }}
+        </div>
+        <div class="col-span-2 sm:col-span-3 lg:col-span-4">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+            {{ form.notes }}
+        </div>
+        {% if form.non_field_errors %}
+        <div class="col-span-2 sm:col-span-3 lg:col-span-4 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="col-span-2 sm:col-span-3 lg:col-span-4 flex gap-2 pt-1">
+            <button type="submit" class="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">Record Sale</button>
             <button type="button" onclick="document.getElementById('sale-panel').remove()"
-                    class="px-3 py-1.5 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                    class="px-4 py-1.5 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
         </div>
     </form>
 </div>
+
+<script>
+(function() {
+    const searchInput = document.getElementById('product-search');
+    const results = document.getElementById('product-results');
+    const info = document.getElementById('product-info');
+    const specInput = document.querySelector('#sale-panel input[name="product_spec"]');
+    const priceInput = document.querySelector('#sale-panel input[name="unit_price"]');
+    let timer;
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(timer);
+        const q = this.value.trim();
+        if (q.length < 1) { results.classList.add('hidden'); return; }
+        timer = setTimeout(() => {
+            fetch(`{% url 'catalog:product_spec_search' %}?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(data => {
+                    results.innerHTML = '';
+                    if (!data.results.length) {
+                        results.innerHTML = '<div class="px-3 py-2 text-xs text-gray-400">No products found</div>';
+                    } else {
+                        data.results.forEach(p => {
+                            const div = document.createElement('div');
+                            div.className = 'px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 flex justify-between items-center';
+                            div.innerHTML = `<span>${p.label}</span><span class="text-xs ${p.stock <= 0 ? 'text-red-500' : 'text-green-600'} font-medium">${p.stock} in stock</span>`;
+                            div.addEventListener('click', () => {
+                                specInput.value = p.id;
+                                searchInput.value = p.label;
+                                if (p.selling_price) priceInput.value = p.selling_price;
+                                info.innerHTML = `<span>Stock: <strong class="${p.stock <= 0 ? 'text-red-600' : 'text-green-700'}">${p.stock}</strong></span><span>WAC: <strong>${p.cost_price || '—'}</strong></span>${p.selling_price ? `<span>Default Price: <strong class="text-blue-700">${p.selling_price}</strong></span>` : ''}`;
+                                info.classList.remove('hidden');
+                                results.classList.add('hidden');
+                            });
+                            results.appendChild(div);
+                        });
+                    }
+                    results.classList.remove('hidden');
+                });
+        }, 250);
+    });
+
+    document.addEventListener('click', e => {
+        if (!results.contains(e.target) && e.target !== searchInput) results.classList.add('hidden');
+    });
+})();
+</script>

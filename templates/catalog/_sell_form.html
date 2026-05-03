@@ -1,23 +1,60 @@
-{% load humanize %}
+{% load humanize fmt %}
 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4" id="sell-form-panel">
-    <h3 class="text-sm font-semibold text-blue-800 mb-3">Sell: {{ spec.product.name }} {% if spec.spec_value %}({{ spec.spec_value.value }}){% endif %}</h3>
-    <p class="text-xs text-gray-500 mb-3">Stock: <strong>{{ spec.current_stock }}</strong> units</p>
-    <form method="post" action="{% url 'sales:sale_create' %}" class="flex flex-wrap items-end gap-3">
-        {% csrf_token %}
-        <input type="hidden" name="product_spec" value="{{ spec.pk }}">
-        {% for field in form %}
-        {% if field.name != 'product_spec' %}
+    <div class="flex items-start justify-between mb-3">
         <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">{{ field.label }}</label>
-            {{ field }}
-            {% if field.errors %}<p class="text-xs text-red-600">{{ field.errors.0 }}</p>{% endif %}
+            <h3 class="text-sm font-semibold text-blue-800">Sell: {{ spec.product.name }}{% if spec.spec_value %} — {{ spec.spec_value.value }}{% endif %}</h3>
+            <div class="flex gap-3 mt-1 text-xs text-gray-600">
+                <span>Stock: <strong class="{% if spec.current_stock <= 0 %}text-red-600{% elif spec.needs_reorder %}text-yellow-600{% else %}text-green-700{% endif %}">{{ spec.current_stock }}</strong></span>
+                <span>WAC: <strong>{{ spec.cached_wac|tzs }}</strong></span>
+                {% if spec.default_selling_price %}<span>Default Price: <strong class="text-blue-700">{{ spec.default_selling_price|tzs }}</strong></span>{% endif %}
+            </div>
         </div>
+        <button type="button" onclick="document.getElementById('sell-form-panel').remove()" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+    </div>
+
+    {% if spec.current_stock <= 0 %}
+    <div class="bg-red-100 border border-red-200 rounded p-2 mb-3 text-xs text-red-700 font-medium">⚠ Out of stock — sale will be blocked on submit.</div>
+    {% endif %}
+
+    <form method="post" action="{% url 'sales:sale_create' %}" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {% csrf_token %}
+        {{ form.product_spec }}
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Quantity <span class="text-red-500">*</span></label>
+            {{ form.quantity }}
+            {% if form.quantity.errors %}<p class="text-xs text-red-600">{{ form.quantity.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">
+                Unit Price <span class="text-red-500">*</span>
+                {% if selling_price %}<span class="text-blue-500 font-normal">({{ selling_price|tzs }})</span>{% endif %}
+            </label>
+            {{ form.unit_price }}
+            {% if form.unit_price.errors %}<p class="text-xs text-red-600">{{ form.unit_price.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Discount</label>
+            {{ form.discount }}
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Payment Method</label>
+            {{ form.payment_method }}
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Date & Time</label>
+            {{ form.sale_date }}
+        </div>
+        <div class="col-span-2 sm:col-span-3 lg:col-span-4">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+            {{ form.notes }}
+        </div>
+        {% if form.non_field_errors %}
+        <div class="col-span-2 sm:col-span-3 lg:col-span-4 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">{{ form.non_field_errors }}</div>
         {% endif %}
-        {% endfor %}
-        <div class="flex gap-2">
-            <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">Record Sale</button>
+        <div class="col-span-2 sm:col-span-3 lg:col-span-4 flex gap-2 pt-1">
+            <button type="submit" class="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">Record Sale</button>
             <button type="button" onclick="document.getElementById('sell-form-panel').remove()"
-                    class="px-3 py-1.5 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                    class="px-4 py-1.5 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
         </div>
     </form>
 </div>
