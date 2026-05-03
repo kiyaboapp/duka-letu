@@ -14,7 +14,7 @@ from reports.views.liability_schedule import liability_schedule
 from reports.views.product_profitability import ProductProfitabilityView
 from reports.views.budget_vs_actual import BudgetVsActualView
 from reports.views.cash_reconciliation import CashReconciliationView
-from reports.views.snapshots import snapshot_list, snapshot_detail
+from reports.views.snapshots import snapshot_list, snapshot_detail, generate_snapshot, snapshot_lock
 
 app_name = 'reports'
 
@@ -35,5 +35,7 @@ urlpatterns = [
     path('budget-vs-actual/', BudgetVsActualView.as_view(), name='budget_vs_actual'),
     path('cash-reconciliation/', CashReconciliationView.as_view(), name='cash_reconciliation'),
     path('snapshots/', snapshot_list, name='snapshot_list'),
+    path('snapshots/generate/', generate_snapshot, name='generate_snapshot'),
     path('snapshots/<int:pk>/', snapshot_detail, name='snapshot_detail'),
+    path('snapshots/<int:pk>/lock/', snapshot_lock, name='snapshot_lock'),
 ]

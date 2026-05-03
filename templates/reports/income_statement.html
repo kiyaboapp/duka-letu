@@ -16,6 +16,18 @@
            class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
             Export PDF
         </a>
+        <form method="post" action="{% url 'reports:generate_snapshot' %}" class="inline">
+            {% csrf_token %}
+            <input type="hidden" name="report_code" value="D1">
+            <input type="hidden" name="period_start" value="{{ data.period_start }}">
+            <input type="hidden" name="period_end" value="{{ data.period_end }}">
+            <button type="submit" class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">
+                💾 Save Snapshot
+            </button>
+            <button type="submit" name="lock" value="1" class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-gray-800 text-white hover:bg-gray-900">
+                🔒 Close Period
+            </button>
+        </form>
     </div>
 </div>
 
