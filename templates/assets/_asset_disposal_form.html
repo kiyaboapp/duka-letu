@@ -1,0 +1,22 @@
+{% load humanize %}
+<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+    <h3 class="text-sm font-semibold text-red-800 mb-3">Record Disposal — {{ asset.name }}</h3>
+    <form hx-post="{% url 'assets:asset_disposal' asset.pk %}"
+          hx-target="#asset-action-area"
+          hx-swap="innerHTML"
+          class="flex flex-wrap items-end gap-3">
+        {% csrf_token %}
+        {% for field in form %}
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<p class="text-xs text-red-600">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="flex gap-2">
+            <button type="submit" class="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700">Record Disposal</button>
+            <button type="button" onclick="document.getElementById('asset-action-area').innerHTML=''"
+                    class="px-3 py-1.5 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+        </div>
+    </form>
+</div>

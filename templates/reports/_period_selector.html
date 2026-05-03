@@ -1,0 +1,26 @@
+{% load humanize %}
+<form method="get" class="flex flex-wrap items-end gap-3 bg-white rounded-lg border border-gray-200 p-4 mb-6">
+    <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Period</label>
+        {{ form.preset }}
+    </div>
+    <div id="custom-range" class="flex gap-2 {% if form.preset.value != 'custom' %}hidden{% endif %}">
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">From</label>
+            {{ form.start }}
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">To</label>
+            {{ form.end }}
+        </div>
+    </div>
+    <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">Apply</button>
+    {% if period %}
+    <span class="text-sm text-gray-500 self-center">{{ period.label }}</span>
+    {% endif %}
+</form>
+<script>
+document.getElementById('id_preset').addEventListener('change', function() {
+    document.getElementById('custom-range').classList.toggle('hidden', this.value !== 'custom');
+});
+</script>

@@ -20,6 +20,9 @@ class Purchase(models.Model):
     supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name='purchases')
     purchase_date = models.DateTimeField(default=timezone.now)
     invoice_number = models.CharField(max_length=255, blank=True)
+    carriage_inwards = models.DecimalField(max_digits=15, decimal_places=2, default=0,
+                                           help_text='Transport/freight cost to bring goods to shop.')
+    notes = models.TextField(blank=True)
 
     class Meta:
         ordering = ['-purchase_date']
@@ -56,6 +59,11 @@ class PurchaseDetail(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         self.product_spec.update_stock()
+
+    def delete(self, *args, **kwargs):
+        spec = self.product_spec
+        super().delete(*args, **kwargs)
+        spec.update_stock()
 
 
 class ReturnOutward(models.Model):

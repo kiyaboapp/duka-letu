@@ -1,47 +1,40 @@
 {% extends 'base.html' %}
-{% load fmt %}
-{% block title %}Sales List — Kiyabo Duka{% endblock %}
+{% load humanize %}
+{% block title %}Sales — Kiyabo Duka{% endblock %}
 {% block page_title %}<h1 class="text-base font-semibold text-gray-800">Sales</h1>{% endblock %}
-
 {% block content %}
-<div class="flex items-center justify-between mb-6">
+<div class="flex items-center justify-between mb-4">
     <h1 class="text-2xl font-bold text-gray-900">Sales</h1>
-    <a href="{% url 'sales:sale_create' %}"
-       class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">
-        + New Sale
-    </a>
+    <button hx-get="{% url 'sales:sale_create_partial' %}"
+            hx-target="#sale-panel-container"
+            hx-swap="innerHTML"
+            class="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">+ New Sale</button>
 </div>
+
+<div id="sale-panel-container" class="mb-4"></div>
 
 <!-- Filter bar -->
-<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-    <form method="get" class="flex flex-wrap gap-3 items-end">
-        <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">From</label>
-            <input type="date" name="date_from" value="{{ request.GET.date_from }}"
-                   class="block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">To</label>
-            <input type="date" name="date_to" value="{{ request.GET.date_to }}"
-                   class="block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-        </div>
-        <div class="flex-1 min-w-48">
-            <label class="block text-xs font-medium text-gray-600 mb-1">Product</label>
-            <input type="text" name="product" value="{{ request.GET.product }}" placeholder="Search product..."
-                   class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-        </div>
-        <button type="submit"
-                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">
-            Filter
-        </button>
-        {% if request.GET.date_from or request.GET.date_to or request.GET.product %}
-        <a href="{% url 'sales:sale_list' %}"
-           class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
-            Clear
-        </a>
-        {% endif %}
-    </form>
-</div>
+<form method="get" class="flex flex-wrap gap-3 items-end bg-white rounded-lg border border-gray-200 p-4 mb-4">
+    <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">From</label>
+        <input type="date" name="date_from" value="{{ request.GET.date_from }}"
+               class="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500">
+    </div>
+    <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">To</label>
+        <input type="date" name="date_to" value="{{ request.GET.date_to }}"
+               class="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500">
+    </div>
+    <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Product</label>
+        <input type="text" name="product" value="{{ request.GET.product }}" placeholder="Search…"
+               class="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500">
+    </div>
+    <button type="submit" class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200">Filter</button>
+    {% if request.GET.date_from or request.GET.date_to or request.GET.product %}
+    <a href="{% url 'sales:sale_list' %}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Clear</a>
+    {% endif %}
+</form>
 
 <!-- Table -->
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -49,38 +42,53 @@
         <table class="min-w-full divide-y divide-gray-200 text-sm">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">ID</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Product</th>
-                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Qty</th>
-                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Unit Price</th>
-                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Amount</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Payment</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Date</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Product</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Qty</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Unit Price</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Amount</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Payment</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                    <th class="px-4 py-3"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
                 {% for sale in sales %}
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-4 py-3 text-gray-500 tabular-nums">{{ sale.id }}</td>
-                    <td class="px-4 py-3 font-medium">
-                        <a href="{% url 'catalog:product_detail' sale.product_spec.pk %}"
-                           class="text-blue-600 hover:text-blue-800 hover:underline">
-                            {{ sale.product_spec }}
-                        </a>
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 font-medium">
+                        <a href="{% url 'catalog:product_detail' sale.product_spec.pk %}" class="text-blue-600 hover:underline">{{ sale.product_spec.product.name }}</a>
+                        {% if sale.product_spec.spec_value %}<span class="text-gray-400 text-xs">({{ sale.product_spec.spec_value.value }})</span>{% endif %}
                     </td>
-                    <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ sale.quantity }}</td>
-                    <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ sale.unit_price|tzs }}</td>
-                    <td class="px-4 py-3 text-right tabular-nums font-semibold text-gray-900">{{ sale.amount|tzs }}</td>
-                    <td class="px-4 py-3 text-gray-500">{{ sale.payment_method|default:"—" }}</td>
-                    <td class="px-4 py-3 text-gray-500">{{ sale.sale_date|date:"M j, Y H:i" }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums text-gray-600">{{ sale.quantity }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums text-gray-600">{{ sale.unit_price|floatformat:0|intcomma }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums font-semibold text-gray-900">{{ sale.amount|floatformat:0|intcomma }}</td>
+                    <td class="px-4 py-2 text-gray-500">{{ sale.payment_method|default:"—" }}</td>
+                    <td class="px-4 py-2 text-gray-500">{{ sale.sale_date|date:"j M Y H:i" }}</td>
+                    <td class="px-4 py-2 text-right">
+                        <div id="return-area-{{ sale.pk }}">
+                            <button hx-get="{% url 'sales:sale_return' sale.pk %}"
+                                    hx-target="#return-area-{{ sale.pk }}"
+                                    hx-swap="innerHTML"
+                                    class="nudge-btn text-red-600 border-red-200 hover:bg-red-50">Return</button>
+                        </div>
+                    </td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="7" class="px-4 py-8 text-center text-gray-400">No sales found</td>
-                </tr>
+                <tr><td colspan="7" class="px-4 py-8 text-center text-gray-400">No sales found</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+
+{% if is_paginated %}
+<div class="flex justify-center mt-4 gap-2">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">&larr; Prev</a>
+    {% endif %}
+    <span class="px-3 py-1.5 text-sm text-gray-600">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Next &rarr;</a>
+    {% endif %}
+</div>
+{% endif %}
 {% endblock %}

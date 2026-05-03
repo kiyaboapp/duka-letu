@@ -53,21 +53,26 @@ class DebtReturnForm(forms.ModelForm):
         model = DebtReturn
         fields = ['debt', 'amount', 'return_date', 'payment_method', 'comment']
         widgets = {
-            'debt': forms.Select(attrs={'class': TW}),
+            'debt': forms.HiddenInput(),
             'amount': forms.NumberInput(attrs={'class': TW}),
             'return_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': TW}),
             'payment_method': forms.Select(attrs={'class': TW}),
             'comment': forms.Textarea(attrs={'class': TW_TEXTAREA, 'rows': 1}),
         }
 
+    def __init__(self, *args, debt=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if debt:
+            self.fields['debt'].initial = debt.pk
+            self.initial['amount'] = debt.balance
+            self.initial['return_date'] = __import__('django.utils.timezone', fromlist=['now']).now().strftime('%Y-%m-%dT%H:%M')
+
     def clean(self):
         cleaned_data = super().clean()
         debt = cleaned_data.get('debt')
         amount = cleaned_data.get('amount')
-
-        if debt and amount:
-            if amount > debt.balance:
-                raise ValidationError(
-                    f'Repayment amount exceeds outstanding balance. Balance: {debt.balance}'
-                )
+        if debt and amount and amount > debt.balance:
+            raise ValidationError(
+                f'Repayment amount exceeds outstanding balance of TZS {debt.balance:,.0f}'
+            )
         return cleaned_data

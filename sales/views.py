@@ -72,6 +72,33 @@ class ReturnInwardCreateView(CreateView):
         return super().form_valid(form)
 
 
+def sale_create_partial(request):
+    """HTMX: return sale form panel."""
+    form = SaleForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        if request.headers.get('HX-Request'):
+            return render(request, 'sales/_sale_panel_success.html', {})
+        return redirect('sales:sale_list')
+    return render(request, 'sales/_sale_panel.html', {'form': form})
+
+
+def sale_return_partial(request, pk):
+    """HTMX: return inward form pre-filled with sale."""
+    sale = get_object_or_404(Sale, pk=pk)
+    form = ReturnInwardForm(request.POST or None, initial={
+        'product_spec': sale.product_spec,
+        'unit_price': sale.unit_price,
+    })
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        if request.headers.get('HX-Request'):
+            return render(request, 'sales/_return_success.html', {'sale': sale})
+        return redirect('sales:sale_list')
+    template = 'sales/_return_form.html' if request.headers.get('HX-Request') else 'sales/return_inward_form.html'
+    return render(request, template, {'form': form, 'sale': sale})
+
+
 def index(request):
     from django.shortcuts import redirect
     return redirect('sales:sale_list')

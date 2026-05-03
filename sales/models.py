@@ -13,6 +13,7 @@ class Sale(models.Model):
     sale_date = models.DateTimeField(default=timezone.now)
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT, null=True, blank=True)
     notes = models.TextField(blank=True)
+    reference_number = models.CharField(max_length=50, blank=True, db_index=True)
 
     class Meta:
         ordering = ['-sale_date']
@@ -26,6 +27,9 @@ class Sale(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+        if not self.reference_number:
+            self.reference_number = f"SL-{self.sale_date.year}-{self.pk:06d}"
+            Sale.objects.filter(pk=self.pk).update(reference_number=self.reference_number)
         self.product_spec.update_stock()
 
 
@@ -98,12 +102,17 @@ class DrawingCategory(models.Model):
 
 
 class Drawing(models.Model):
-    """Owner withdrawals — goods taken for personal use."""
+    """Owner withdrawals — goods or cash taken for personal use."""
+    DRAWING_TYPES = [('GOODS', 'Goods'), ('CASH', 'Cash')]
     drawing_category = models.ForeignKey(DrawingCategory, on_delete=models.PROTECT)
-    product_spec = models.ForeignKey(ProductSpec, on_delete=models.PROTECT, related_name='drawings')
+    drawing_type = models.CharField(max_length=10, choices=DRAWING_TYPES, default='GOODS')
+    product_spec = models.ForeignKey(ProductSpec, on_delete=models.PROTECT, related_name='drawings',
+                                     null=True, blank=True)
     quantity = models.PositiveIntegerField(default=1)
-    unit_price = models.DecimalField(max_digits=15, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     discount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    cash_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0,
+                                      help_text='TZS amount for cash drawings.')
     sale_date = models.DateTimeField(default=timezone.now)
     notes = models.TextField(blank=True)
 
@@ -112,10 +121,15 @@ class Drawing(models.Model):
 
     @property
     def amount(self):
-        return (self.quantity * self.unit_price) - self.discount
+        if self.drawing_type == 'CASH':
+            return self.cash_amount
+        if self.product_spec:
+            return (self.quantity * self.unit_price) - self.discount
+        return Decimal('0')
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.product_spec.update_stock()
+        if self.product_spec:
+            self.product_spec.update_stock()
 
 # Create your models here.

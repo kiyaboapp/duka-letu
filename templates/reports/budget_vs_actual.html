@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Budget vs Actual — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Budget vs Actual</h1>{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold text-gray-900">Budget vs Actual</h1>
+    <a href="{% url 'reports:index' %}" class="text-sm text-gray-500 hover:text-gray-700">&larr; Reports</a>
+</div>
+
+{% include 'reports/_period_selector.html' %}
+
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <table class="min-w-full text-sm divide-y divide-gray-100">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Line Item</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Budget (TZS)</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Actual (TZS)</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Variance</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for row in rows %}
+            <tr class="{% if row.label == 'Net Profit' or row.label == 'Gross Profit' %}bg-gray-50 font-semibold{% endif %}">
+                <td class="px-4 py-2 text-gray-800">{{ row.label }}</td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-600">{{ row.budget|floatformat:0|intcomma }}</td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-900">{{ row.actual|floatformat:0|intcomma }}</td>
+                <td class="px-4 py-2 text-right tabular-nums {% if row.variance >= 0 %}text-green-700{% else %}text-red-600{% endif %}">
+                    {% if row.variance >= 0 %}+{% endif %}{{ row.variance|floatformat:0|intcomma }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not budget_lines %}
+<p class="text-sm text-gray-400 mt-4">No budget lines configured for this period. Add budget lines via Admin.</p>
+{% endif %}
+{% endblock %}

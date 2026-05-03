@@ -1,0 +1,17 @@
+{% load humanize %}
+<tr id="debt-row-{{ debt.pk }}">
+    <td class="px-4 py-2 text-gray-600">{{ debt.sale_date|date:"j M Y" }}</td>
+    <td class="px-4 py-2 text-gray-800">{{ debt.product_spec.product.name }}</td>
+    <td class="px-4 py-2 text-right tabular-nums text-gray-900">{{ debt.amount_due|floatformat:0|intcomma }}</td>
+    <td class="px-4 py-2 text-right tabular-nums font-semibold {% if debt.balance > 0 %}text-red-600{% else %}text-green-700{% endif %}">{{ debt.balance|floatformat:0|intcomma }}</td>
+    <td class="px-4 py-2 text-right">
+        {% if debt.balance > 0 %}
+        <button hx-get="{% url 'credit:debtor_repay' debtor.pk debt.pk %}"
+                hx-target="#debt-row-{{ debt.pk }}"
+                hx-swap="outerHTML"
+                class="nudge-btn text-blue-600 border-blue-200 hover:bg-blue-50">Repay</button>
+        {% else %}
+        <span class="text-xs text-green-600 font-medium">Settled</span>
+        {% endif %}
+    </td>
+</tr>

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Liabilities — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Liabilities</h1>{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Liabilities</h1>
+    <a href="{% url 'finance:index' %}" class="text-sm text-gray-500 hover:text-gray-700">&larr; Finance</a>
+</div>
+
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <table class="min-w-full text-sm divide-y divide-gray-100">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Name</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Original</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Balance</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Maturity</th>
+                <th class="px-4 py-3"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for l in liabilities %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-2 font-medium text-gray-900">{{ l.name }}</td>
+                <td class="px-4 py-2 text-gray-500">{{ l.liability_type.name }}</td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-600">TZS {{ l.original_amount|floatformat:0|intcomma }}</td>
+                <td class="px-4 py-2 text-right tabular-nums font-semibold text-gray-900">TZS {{ l.current_balance|floatformat:0|intcomma }}</td>
+                <td class="px-4 py-2 text-gray-500">{{ l.maturity_date|date:"j M Y"|default:"—" }}</td>
+                <td class="px-4 py-2 text-right">
+                    <a href="{% url 'finance:liability_detail' l.pk %}" class="text-blue-600 hover:text-blue-800 text-xs font-medium">View</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">No liabilities found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

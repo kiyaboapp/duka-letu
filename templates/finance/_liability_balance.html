@@ -1,0 +1,5 @@
+{% load humanize %}
+<div id="liability-balance-{{ liability.pk }}" class="bg-white rounded-lg border border-gray-200 p-4">
+    <p class="text-xs text-gray-500 uppercase tracking-wide">Current Balance</p>
+    <p class="text-lg font-bold text-red-600 tabular-nums mt-1">TZS {{ liability.current_balance|floatformat:0|intcomma }}</p>
+</div>
