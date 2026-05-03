@@ -115,25 +115,44 @@
         background: transparent;
     }
 
-    /* ── Cards & Panels ──────────────────────────────────────────── */
-    .card {
-        background: var(--surface);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow);
-        border: 1px solid var(--border);
-        transition: all 0.2s ease;
+    /* Constrain single-column form/detail pages */
+    .max-w-2xl, .max-w-xl, .max-w-lg {
+        width: 100%;
     }
 
-    .card:hover {
-        box-shadow: var(--shadow-md);
-        transform: translateY(-2px);
+    /* ── Cards & Panels ──────────────────────────────────────────── */
+    /* Target the common Tailwind card pattern used across all templates */
+    .bg-white.rounded-lg,
+    .bg-white.rounded-xl,
+    .card {
+        background: #ffffff;
+        border-radius: 0.75rem !important;
+        border: 1px solid #e8edf2 !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04) !important;
+        transition: box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    /* Hoverable cards (links) */
+    a.bg-white.rounded-lg:hover,
+    a.bg-white.rounded-xl:hover,
+    a.card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04) !important;
+        transform: translateY(-1px);
+    }
+
+    /* Card header panels */
+    .bg-white.rounded-lg > .bg-gray-50,
+    .bg-white.rounded-lg > div > .bg-gray-50,
+    .rounded-t-lg.bg-gray-50 {
+        background: #f8fafc !important;
+        border-bottom: 1px solid #e8edf2;
     }
 
     .card-header {
         padding: 1rem 1.25rem;
         border-bottom: 1px solid var(--border);
-        background: linear-gradient(180deg, var(--surface-alt) 0%, var(--surface) 100%);
-        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        background: #f8fafc;
+        border-radius: 0.75rem 0.75rem 0 0;
     }
 
     .card-body {
