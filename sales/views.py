@@ -3,8 +3,12 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.utils import timezone
+from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Count
+from django.db.models.functions import Coalesce
 from .models import Sale, ReturnInward
 from .forms import SaleForm, ReturnInwardForm
+
+_DEC = DecimalField(max_digits=15, decimal_places=2)
 
 
 class SaleListView(ListView):
@@ -14,7 +18,11 @@ class SaleListView(ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        queryset = Sale.objects.select_related('product_spec__product').all()
+        queryset = Sale.objects.select_related(
+            'product_spec__product', 
+            'product_spec__spec_value',
+            'payment_method'
+        ).all()
         date_from = self.request.GET.get('date_from')
         date_to = self.request.GET.get('date_to')
         product = self.request.GET.get('product')
@@ -26,7 +34,43 @@ class SaleListView(ListView):
         if product:
             queryset = queryset.filter(product_spec__product__name__icontains=product)
 
-        return queryset
+        return queryset.order_by('-sale_date')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Calculate summary statistics for the filtered queryset
+        qs = self.get_queryset()
+        
+        # Total count and amount
+        total_count = qs.count()
+        amount_expr = ExpressionWrapper(F('quantity') * F('unit_price') - F('discount'), output_field=_DEC)
+        total_amount = qs.aggregate(total=Coalesce(Sum(amount_expr), Decimal('0')))['total']
+        
+        # Average transaction
+        avg_amount = total_amount / total_count if total_count > 0 else Decimal('0')
+        
+        # Calculate total profit (amount - cost)
+        cost_expr = ExpressionWrapper(F('quantity') * F('product_spec__cached_wac'), output_field=_DEC)
+        total_profit = qs.aggregate(
+            profit=Coalesce(Sum(amount_expr - cost_expr), Decimal('0'))
+        )['profit']
+        
+        context['stats'] = {
+            'total_count': total_count,
+            'total_amount': total_amount,
+            'avg_amount': avg_amount,
+            'total_profit': total_profit,
+        }
+        
+        # Provide create URL from model method if available, otherwise fallback
+        try:
+            from .models import Sale
+            context['create_url'] = reverse_lazy('sales:sale_create_partial')
+        except:
+            context['create_url'] = '/sales/new/'
+        
+        return context
 
 
 class SaleCreateView(CreateView):

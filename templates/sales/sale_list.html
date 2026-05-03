@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load humanize fmt %}
 {% block title %}Sales — Kiyabo Duka{% endblock %}
 {% block page_title %}<h1 class="text-base font-semibold text-gray-800">Sales</h1>{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-4">
     <h1 class="text-2xl font-bold text-gray-900">Sales</h1>
-    <button hx-get="{% url 'sales:sale_create_partial' %}"
+    <button hx-get="{{ create_url }}"
             hx-target="#sale-panel-container"
             hx-swap="innerHTML"
             class="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">+ New Sale</button>
@@ -36,6 +36,26 @@
     {% endif %}
 </form>
 
+<!-- Summary Stats -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+    <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Total Sales</div>
+        <div class="text-2xl font-bold text-gray-900 mt-1">{{ stats.total_count }}</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Total Revenue</div>
+        <div class="text-2xl font-bold text-green-600 mt-1">{{ stats.total_amount|tzs }}</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Avg Transaction</div>
+        <div class="text-2xl font-bold text-blue-600 mt-1">{{ stats.avg_amount|tzs }}</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Total Profit</div>
+        <div class="text-2xl font-bold {% if stats.total_profit >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} mt-1">{{ stats.total_profit|tzs }}</div>
+    </div>
+</div>
+
 <!-- Table -->
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
@@ -46,49 +66,83 @@
                     <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Qty</th>
                     <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Unit Price</th>
                     <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Amount</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Profit</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Payment</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
-                    <th class="px-4 py-3"></th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
                 {% for sale in sales %}
                 <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-2 font-medium">
-                        <a href="{% url 'catalog:product_detail' sale.product_spec.pk %}" class="text-blue-600 hover:underline">{{ sale.product_spec.product.name }}</a>
+                    <td class="px-4 py-2">
+                        <a href="{{ sale.product_spec.get_absolute_url }}" class="text-blue-600 hover:underline font-medium">{{ sale.product_spec.product.name }}</a>
                         {% if sale.product_spec.spec_value %}<span class="text-gray-400 text-xs">({{ sale.product_spec.spec_value.value }})</span>{% endif %}
+                        <br>
+                        <span class="inline-block mt-1 {{ sale.get_status_badge.color }} px-2 py-0.5 rounded-full text-xs font-medium">{{ sale.get_status_badge.label }}</span>
                     </td>
                     <td class="px-4 py-2 text-right tabular-nums text-gray-600">{{ sale.quantity }}</td>
                     <td class="px-4 py-2 text-right tabular-nums text-gray-600">{{ sale.unit_price|floatformat:0|intcomma }}</td>
                     <td class="px-4 py-2 text-right tabular-nums font-semibold text-gray-900">{{ sale.amount|floatformat:0|intcomma }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums {% if sale.get_profit_amount >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} font-medium">
+                        {{ sale.get_profit_amount|tzs }}
+                        <span class="text-xs text-gray-400">({{ sale.get_profit_margin_percent }}%)</span>
+                    </td>
                     <td class="px-4 py-2 text-gray-500">{{ sale.payment_method|default:"—" }}</td>
                     <td class="px-4 py-2 text-gray-500">{{ sale.sale_date|date:"j M Y H:i" }}</td>
                     <td class="px-4 py-2 text-right">
-                        <div id="return-area-{{ sale.pk }}">
-                            <button hx-get="{% url 'sales:sale_return' sale.pk %}"
+                        <div class="flex justify-end gap-2">
+                            {% if sale.can_edit %}
+                            <a href="{{ sale.get_edit_url }}" class="text-blue-600 hover:text-blue-800 text-xs font-medium" title="Edit">Edit</a>
+                            {% endif %}
+                            {% if sale.can_return %}
+                            <button hx-get="{{ sale.get_return_url }}"
                                     hx-target="#return-area-{{ sale.pk }}"
                                     hx-swap="innerHTML"
-                                    class="nudge-btn text-red-600 border-red-200 hover:bg-red-50">Return</button>
+                                    class="text-red-600 hover:text-red-800 text-xs font-medium" title="Return">Return</button>
+                            <div id="return-area-{{ sale.pk }}"></div>
+                            {% endif %}
+                            <a href="{{ sale.get_duplicate_url }}" class="text-green-600 hover:text-green-800 text-xs font-medium" title="Duplicate">Duplicate</a>
+                            {% if sale.can_delete %}
+                            <a href="{{ sale.get_delete_url }}" class="text-gray-500 hover:text-gray-700 text-xs font-medium" title="Delete" 
+                               onclick="return confirm('Are you sure you want to delete this sale?')">Delete</a>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7" class="px-4 py-8 text-center text-gray-400">No sales found</td></tr>
+                <tr>
+                    <td colspan="8" class="px-4 py-8 text-center">
+                        <div class="text-gray-400 mb-2">No sales found</div>
+                        <a href="{{ create_url }}" class="text-blue-600 hover:text-blue-800 font-medium">Create your first sale &rarr;</a>
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
+            {% if sales.has_other_pages %}
+            <tfoot class="bg-gray-50">
+                <tr>
+                    <td colspan="8" class="px-4 py-3">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-500">
+                                Showing {{ sales.start_index }} to {{ sales.end_index }} of {{ sales.paginator.count }} results
+                            </div>
+                            <div class="flex gap-2">
+                                {% if sales.has_previous %}
+                                <a href="?page={{ sales.previous_page_number }}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.product %}&product={{ request.GET.product }}{% endif %}" 
+                                   class="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-100">&larr; Previous</a>
+                                {% endif %}
+                                {% if sales.has_next %}
+                                <a href="?page={{ sales.next_page_number }}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.product %}&product={{ request.GET.product }}{% endif %}" 
+                                   class="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-100">Next &rarr;</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tfoot>
+            {% endif %}
         </table>
     </div>
 </div>
-
-{% if is_paginated %}
-<div class="flex justify-center mt-4 gap-2">
-    {% if page_obj.has_previous %}
-    <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">&larr; Prev</a>
-    {% endif %}
-    <span class="px-3 py-1.5 text-sm text-gray-600">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Next &rarr;</a>
-    {% endif %}
-</div>
-{% endif %}
 {% endblock %}
