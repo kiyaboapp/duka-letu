@@ -190,15 +190,14 @@ class ProductSpec(TimestampedModel, ActionMixin):
 
     def get_absolute_url(self):
         from django.urls import reverse
-        return reverse('catalog:product_spec_detail', kwargs={'pk': self.pk})
+        return reverse('catalog:product_detail', kwargs={'pk': self.pk})
 
     def get_update_url(self):
         from django.urls import reverse
-        return reverse('catalog:product_spec_update', kwargs={'pk': self.pk})
+        return reverse('catalog:product_detail', kwargs={'pk': self.pk})
 
     def get_delete_url(self):
-        from django.urls import reverse
-        return reverse('catalog:product_spec_delete', kwargs={'pk': self.pk})
+        return '#'
 
     # ── SELF-SUFFICIENT ACTIONS ────────────────────────────────────────
     
