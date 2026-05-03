@@ -10,7 +10,7 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Financial Statements</h2>
+        <h2 class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Financial Statements</h2>
         <div class="space-y-2">
             <a href="{% url 'reports:income_statement' %}" class="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -28,7 +28,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Sales & Revenue</h2>
+        <h2 class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Sales & Revenue</h2>
         <div class="space-y-2">
             <a href="{% url 'reports:daily_sales' %}" class="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -46,7 +46,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Inventory & Purchases</h2>
+        <h2 class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Inventory & Purchases</h2>
         <div class="space-y-2">
             <a href="{% url 'reports:stock_report' %}" class="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
@@ -64,7 +64,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Credit & Debtors</h2>
+        <h2 class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Credit & Debtors</h2>
         <div class="space-y-2">
             <a href="{% url 'reports:debtor_aging' %}" class="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -74,7 +74,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Expenses & Liabilities</h2>
+        <h2 class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Expenses & Liabilities</h2>
         <div class="space-y-2">
             <a href="{% url 'reports:expense_analysis' %}" class="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
@@ -96,7 +96,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Snapshots</h2>
+        <h2 class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Snapshots</h2>
         <div class="space-y-2">
             <a href="{% url 'reports:snapshot_list' %}" class="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>

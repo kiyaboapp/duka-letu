@@ -22,7 +22,7 @@
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0" style="background:linear-gradient(135deg,#4f46e5,#7c3aed) flex-shrink-0"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
             <div>
                 <p class="text-2xl font-bold text-gray-900 tabular-nums">{{ total_debtors|default:0 }}</p>
                 <p class="text-sm text-gray-500">Total Debtors</p>
@@ -31,7 +31,7 @@
     </div>
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg></div>
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0" style="background:linear-gradient(135deg,#f59e0b,#d97706) flex-shrink-0"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg></div>
             <div>
                 <p class="text-2xl font-bold text-gray-900 tabular-nums">{{ total_outstanding|default:0|tzs }}</p>
                 <p class="text-sm text-gray-500">Total Outstanding</p>
@@ -40,7 +40,7 @@
     </div>
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-xl flex-shrink-0">&#9888;</div>
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0" style="background:linear-gradient(135deg,#ef4444,#dc2626) text-xl flex-shrink-0">&#9888;</div>
             <div>
                 <p class="text-2xl font-bold text-gray-900 tabular-nums">{{ overdue_count|default:0 }}</p>
                 <p class="text-sm text-gray-500">Overdue Debts</p>
