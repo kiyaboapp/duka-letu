@@ -43,14 +43,33 @@ def index(request):
 def expense_list(request):
     q = request.GET.get('q', '').strip()
     active = request.GET.get('active', '')
-    items = ExpenseItem.objects.select_related('expense_type').prefetch_related('rates')
+    today = timezone.now().date()
+    month_start = today.replace(day=1)
+
+    items = ExpenseItem.objects.select_related('expense_type').prefetch_related('rates', 'obligations')
     if q:
         items = items.filter(name__icontains=q)
     if active == '1':
         items = items.filter(is_active=True)
     elif active == '0':
         items = items.filter(is_active=False)
-    return render(request, 'finance/expense_list.html', {'items': items, 'q': q, 'active': active})
+
+    from django.db.models import F
+    overdue_count = PaymentObligation.objects.filter(
+        expense_item__isnull=False,
+        due_date__lt=today,
+        amount_paid__lt=F('amount_due'),
+    ).count()
+
+    monthly_total = Payment.objects.filter(
+        payment_type='EXPENSE',
+        payment_date__date__gte=month_start,
+    ).aggregate(total=Coalesce(Sum('amount_paid'), Decimal('0')))['total']
+
+    return render(request, 'finance/expense_list.html', {
+        'items': items, 'q': q, 'active': active,
+        'today': today, 'overdue_count': overdue_count, 'monthly_total': monthly_total,
+    })
 
 
 def expense_detail(request, pk):

@@ -143,22 +143,22 @@ class ExpenseItem(TimestampedModel):
     def get_status_badge(self):
         if not self.is_active:
             return {'class': 'bg-gray-100 text-gray-800', 'text': 'Inactive'}
-        elif hasattr(self, 'obligations') and self.obligations.filter(status='OVERDUE').exists():
+        today = timezone.now().date()
+        overdue = self.obligations.filter(due_date__lt=today, amount_paid__lt=models.F('amount_due')).exists()
+        pending = self.obligations.filter(due_date__gte=today, amount_paid__lt=models.F('amount_due')).exists()
+        if overdue:
             return {'class': 'bg-red-100 text-red-800', 'text': 'Overdue'}
-        elif hasattr(self, 'obligations') and self.obligations.filter(status='PENDING').exists():
+        elif pending:
             return {'class': 'bg-yellow-100 text-yellow-800', 'text': 'Pending'}
         else:
             return {'class': 'bg-green-100 text-green-800', 'text': 'Active'}
 
     def get_next_due_date(self):
-        """Get next obligation due date for this item."""
-        if hasattr(self, 'obligations'):
-            next_due = self.obligations.filter(
-                status__in=['PENDING', 'PARTIAL'],
-                due_date__gte=timezone.now().date()
-            ).order_by('due_date').first()
-            return next_due.due_date if next_due else None
-        return None
+        today = timezone.now().date()
+        next_due = self.obligations.filter(
+            due_date__gte=today, amount_paid__lt=models.F('amount_due')
+        ).order_by('due_date').first()
+        return next_due.due_date if next_due else None
 
     def get_total_paid_this_month(self):
         """Calculate total payments for this item in current month."""
