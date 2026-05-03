@@ -36,8 +36,8 @@ class PaymentForm(forms.ModelForm):
         self.fields['payment_method'].queryset = PaymentMethod.objects.filter(
             category_link__is_active=True
         ).order_by('name')
-        if not self.initial.get('payment_date'):
-            self.initial['payment_date'] = timezone.now().strftime('%Y-%m-%dT%H:%M')
+        if not self.instance.pk:
+            self.initial.setdefault('payment_date', timezone.now().strftime('%Y-%m-%dT%H:%M'))
 
 
 class LiabilityPaymentForm(forms.Form):

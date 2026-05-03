@@ -31,9 +31,14 @@ class DebtForm(forms.ModelForm):
             'quantity': forms.NumberInput(attrs={'class': TW}),
             'unit_price': forms.NumberInput(attrs={'class': TW}),
             'discount': forms.NumberInput(attrs={'class': TW}),
-            'sale_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': TW}),
+            'sale_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': TW}, format='%Y-%m-%dT%H:%M'),
             'expected_payment_date': forms.DateInput(attrs={'type': 'date', 'class': TW}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.initial.setdefault('sale_date', __import__('django.utils.timezone', fromlist=['now']).now().strftime('%Y-%m-%dT%H:%M'))
 
     def clean(self):
         cleaned_data = super().clean()
@@ -55,7 +60,7 @@ class DebtReturnForm(forms.ModelForm):
         widgets = {
             'debt': forms.HiddenInput(),
             'amount': forms.NumberInput(attrs={'class': TW}),
-            'return_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': TW}),
+            'return_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': TW}, format='%Y-%m-%dT%H:%M'),
             'payment_method': forms.Select(attrs={'class': TW}),
             'comment': forms.Textarea(attrs={'class': TW_TEXTAREA, 'rows': 1}),
         }
