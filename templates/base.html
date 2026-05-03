@@ -121,43 +121,89 @@
     }
 
     /* ── Cards & Panels ──────────────────────────────────────────── */
-    /* Target the common Tailwind card pattern used across all templates */
     .bg-white.rounded-lg,
     .bg-white.rounded-xl,
     .card {
-        background: #ffffff;
+        background: #ffffff !important;
         border-radius: 0.75rem !important;
-        border: 1px solid #e8edf2 !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04) !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05) !important;
         transition: box-shadow 0.15s ease, transform 0.15s ease;
     }
 
-    /* Hoverable cards (links) */
     a.bg-white.rounded-lg:hover,
-    a.bg-white.rounded-xl:hover,
-    a.card:hover {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04) !important;
-        transform: translateY(-1px);
+    a.bg-white.rounded-xl:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
+        transform: translateY(-2px);
+        text-decoration: none;
     }
 
-    /* Card header panels */
-    .bg-white.rounded-lg > .bg-gray-50,
-    .bg-white.rounded-lg > div > .bg-gray-50,
-    .rounded-t-lg.bg-gray-50 {
+    /* Card headers — every bg-gray-50 inside a white card */
+    .bg-white.rounded-lg .bg-gray-50,
+    .bg-white.rounded-xl .bg-gray-50,
+    .bg-gray-50.rounded-t-lg {
         background: #f8fafc !important;
-        border-bottom: 1px solid #e8edf2;
+        border-bottom: 1px solid #e2e8f0 !important;
+    }
+
+    /* Card header text — make section labels bolder and darker */
+    .bg-white.rounded-lg .bg-gray-50 h2,
+    .bg-white.rounded-xl .bg-gray-50 h2,
+    .bg-gray-50.rounded-t-lg h2 {
+        font-size: 0.8125rem !important;
+        font-weight: 700 !important;
+        color: #374151 !important;
+        text-transform: none !important;
+        letter-spacing: 0 !important;
+    }
+
+    /* KPI stat cards — icon boxes */
+    .bg-white.rounded-lg .rounded-lg.bg-green-100,
+    .bg-white.rounded-lg .rounded-lg.bg-blue-100,
+    .bg-white.rounded-lg .rounded-lg.bg-amber-100,
+    .bg-white.rounded-lg .rounded-lg.bg-indigo-100,
+    .bg-white.rounded-lg .rounded-xl.bg-green-100,
+    .bg-white.rounded-lg .rounded-xl.bg-blue-100,
+    .bg-white.rounded-lg .rounded-xl.bg-amber-100,
+    .bg-white.rounded-lg .rounded-xl.bg-indigo-100 {
+        width: 2.5rem !important;
+        height: 2.5rem !important;
+        border-radius: 0.625rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .bg-white.rounded-lg .rounded-lg.bg-green-100  { background: linear-gradient(135deg,#10b981,#059669) !important; }
+    .bg-white.rounded-lg .rounded-lg.bg-blue-100   { background: linear-gradient(135deg,#4f46e5,#7c3aed) !important; }
+    .bg-white.rounded-lg .rounded-lg.bg-amber-100  { background: linear-gradient(135deg,#f59e0b,#d97706) !important; }
+    .bg-white.rounded-lg .rounded-lg.bg-indigo-100 { background: linear-gradient(135deg,#6366f1,#4f46e5) !important; }
+    .bg-white.rounded-lg .rounded-xl.bg-green-100  { background: linear-gradient(135deg,#10b981,#059669) !important; }
+    .bg-white.rounded-lg .rounded-xl.bg-blue-100   { background: linear-gradient(135deg,#4f46e5,#7c3aed) !important; }
+    .bg-white.rounded-lg .rounded-xl.bg-amber-100  { background: linear-gradient(135deg,#f59e0b,#d97706) !important; }
+    .bg-white.rounded-lg .rounded-xl.bg-indigo-100 { background: linear-gradient(135deg,#6366f1,#4f46e5) !important; }
+
+    /* Icon colors inside gradient boxes → white */
+    .bg-white.rounded-lg .rounded-lg.bg-green-100 svg,
+    .bg-white.rounded-lg .rounded-lg.bg-blue-100 svg,
+    .bg-white.rounded-lg .rounded-lg.bg-amber-100 svg,
+    .bg-white.rounded-lg .rounded-lg.bg-indigo-100 svg,
+    .bg-white.rounded-lg .rounded-xl.bg-green-100 svg,
+    .bg-white.rounded-lg .rounded-xl.bg-blue-100 svg,
+    .bg-white.rounded-lg .rounded-xl.bg-amber-100 svg,
+    .bg-white.rounded-lg .rounded-xl.bg-indigo-100 svg {
+        color: white !important;
+        stroke: white !important;
     }
 
     .card-header {
         padding: 1rem 1.25rem;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid #e2e8f0;
         background: #f8fafc;
         border-radius: 0.75rem 0.75rem 0 0;
     }
 
-    .card-body {
-        padding: 1.25rem;
-    }
+    .card-body { padding: 1.25rem; }
 
     /* ── Buttons ─────────────────────────────────────────────────── */
     .btn {
