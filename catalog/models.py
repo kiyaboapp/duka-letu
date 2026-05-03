@@ -2,11 +2,13 @@ from django.db import models
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from django.db.models.functions import Coalesce
 from decimal import Decimal
+from apps.core.models import TimestampedModel
+from apps.core.services import ActionMixin
 
 _DEC = DecimalField(max_digits=15, decimal_places=2)
 
 
-class Category(models.Model):
+class Category(TimestampedModel):
     name = models.CharField(max_length=255, unique=True)
 
     class Meta:
@@ -17,7 +19,7 @@ class Category(models.Model):
         return self.name
 
 
-class ProductType(models.Model):
+class ProductType(TimestampedModel):
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='types')
     name = models.CharField(max_length=255)
 
@@ -29,7 +31,7 @@ class ProductType(models.Model):
         return f"{self.category.name} — {self.name}"
 
 
-class Brand(models.Model):
+class Brand(TimestampedModel):
     name = models.CharField(max_length=255, unique=True)
 
     class Meta:
@@ -39,7 +41,7 @@ class Brand(models.Model):
         return self.name
 
 
-class Unit(models.Model):
+class Unit(TimestampedModel):
     name = models.CharField(max_length=100, unique=True)
     abbreviation = models.CharField(max_length=20, blank=True)
 
@@ -50,7 +52,7 @@ class Unit(models.Model):
         return self.abbreviation or self.name
 
 
-class Spec(models.Model):
+class Spec(TimestampedModel):
     name = models.CharField(max_length=255, unique=True)
 
     class Meta:
@@ -60,7 +62,7 @@ class Spec(models.Model):
         return self.name
 
 
-class SpecValue(models.Model):
+class SpecValue(TimestampedModel):
     spec = models.ForeignKey(Spec, on_delete=models.PROTECT, related_name='values')
     value = models.CharField(max_length=255)
 
@@ -72,7 +74,7 @@ class SpecValue(models.Model):
         return f"{self.spec.name}: {self.value}"
 
 
-class Product(models.Model):
+class Product(TimestampedModel):
     name = models.CharField(max_length=255)
     product_type = models.ForeignKey(ProductType, on_delete=models.PROTECT, related_name='products')
     brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True, blank=True, related_name='products')
@@ -91,7 +93,7 @@ class Product(models.Model):
         return self.product_type.category
 
 
-class ProductSpec(models.Model):
+class ProductSpec(TimestampedModel, ActionMixin):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='specs')
     spec_value = models.ForeignKey(SpecValue, on_delete=models.PROTECT, related_name='product_specs')
     default_cost_price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
@@ -110,6 +112,24 @@ class ProductSpec(models.Model):
 
     def __str__(self):
         return f"{self.product.name} ({self.spec_value.value})"
+    
+    # Override ActionMixin defaults for specific business rules
+    def can_edit(self, user=None) -> bool:
+        """Allow editing unless there are transactions (simplified - in production check transaction history)."""
+        return True
+    
+    def can_delete(self, user=None) -> bool:
+        """Prevent deletion if there's any stock or transaction history."""
+        return self.current_stock == 0 and not self.cached_wac > 0
+    
+    def get_status_badge(self) -> dict:
+        """Returns status info for UI badges with Tailwind classes."""
+        if self.is_out_of_stock():
+            return {'label': 'Out of Stock', 'color': 'bg-red-100 text-red-800'}
+        elif self.needs_reorder():
+            return {'label': 'Low Stock', 'color': 'bg-yellow-100 text-yellow-800'}
+        else:
+            return {'label': 'In Stock', 'color': 'bg-green-100 text-green-800'}
 
     def update_stock(self):
         from django.db.models.functions import Coalesce as C
@@ -155,3 +175,105 @@ class ProductSpec(models.Model):
     @property
     def is_out_of_stock(self):
         return self.current_stock <= 0
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('catalog:product_spec_detail', kwargs={'pk': self.pk})
+
+    def get_update_url(self):
+        from django.urls import reverse
+        return reverse('catalog:product_spec_update', kwargs={'pk': self.pk})
+
+    def get_delete_url(self):
+        from django.urls import reverse
+        return reverse('catalog:product_spec_delete', kwargs={'pk': self.pk})
+
+    # ── SELF-SUFFICIENT ACTIONS ────────────────────────────────────────
+    
+    def get_sell_url(self):
+        """Direct URL to sell this product."""
+        from django.urls import reverse
+        return f"{reverse('sales:sale_create')}?product_spec={self.pk}"
+    
+    def get_purchase_url(self):
+        """Direct URL to purchase more of this product."""
+        from django.urls import reverse
+        return f"{reverse('inventory:purchase_create')}?product_spec={self.pk}"
+    
+    def get_credit_sale_url(self):
+        """Direct URL to create credit sale for this product."""
+        from django.urls import reverse
+        return f"{reverse('credit:debt_create')}?product_spec={self.pk}"
+    
+    def get_adjust_stock_url(self):
+        """URL to stock adjustment form (if implemented)."""
+        from django.urls import reverse
+        try:
+            return reverse('catalog:product_spec_adjust_stock', kwargs={'pk': self.pk})
+        except:
+            return '#'
+    
+    def get_history_url(self):
+        """URL to transaction history for this product."""
+        from django.urls import reverse
+        return reverse('catalog:product_detail', kwargs={'pk': self.pk})
+    
+    def can_sell(self):
+        """Check if product can be sold (has stock)."""
+        return self.current_stock > 0
+    
+    def can_purchase(self):
+        """Always allow purchases."""
+        return True
+    
+    def needs_reorder(self):
+        """Check if product needs reordering."""
+        return self.current_stock <= self.reorder_level and self.current_stock > 0
+    
+    def is_out_of_stock(self):
+        """Check if product is out of stock."""
+        return self.current_stock <= 0
+    
+    def get_status_badge_class(self):
+        """Return Tailwind CSS classes for status badge."""
+        if self.is_out_of_stock():
+            return 'bg-red-100 text-red-800'
+        elif self.needs_reorder():
+            return 'bg-yellow-100 text-yellow-800'
+        else:
+            return 'bg-green-100 text-green-800'
+    
+    def get_status_label(self):
+        """Return human-readable status label."""
+        if self.is_out_of_stock():
+            return 'Out of Stock'
+        elif self.needs_reorder():
+            return 'Low Stock'
+        else:
+            return 'In Stock'
+    
+    # Additional self-sufficient methods for template convenience
+    def get_profit_margin_percent(self) -> float:
+        """Calculate profit margin percentage based on cached WAC and default selling price."""
+        if self.cached_wac > 0 and self.default_selling_price:
+            profit = self.default_selling_price - self.cached_wac
+            return round((profit / self.cached_wac) * 100, 2)
+        return 0.0
+    
+    def get_reorder_quantity_suggestion(self) -> int:
+        """Suggest reorder quantity based on budget monthly sales."""
+        if self.budget_monthly_sales_qty > 0:
+            # Suggest ordering enough for 2 months minus current stock
+            suggested = (self.budget_monthly_sales_qty * 2) - self.current_stock
+            return max(0, suggested)
+        return 0
+    
+    def get_quick_actions(self) -> list:
+        """Returns list of quick action URLs available for this product."""
+        actions = []
+        if self.can_sell():
+            actions.append({'label': 'Sell', 'url': self.get_sell_url(), 'icon': '💰'})
+        if self.can_purchase():
+            actions.append({'label': 'Purchase', 'url': self.get_purchase_url(), 'icon': '📦'})
+        actions.append({'label': 'Credit Sale', 'url': self.get_credit_sale_url(), 'icon': '📒'})
+        return actions

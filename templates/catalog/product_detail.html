@@ -25,11 +25,52 @@
 </div>
 
 <div class="flex gap-2 mb-6">
-    {% if product.current_stock > 0 %}
-    <a href="{% url 'sales:sale_create' %}?product_spec={{ product.pk }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">Sell</a>
+    {% for action in product.get_quick_actions %}
+    <a href="{{ action.url }}" 
+       class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-md transition-colors"
+       style="background-color: {% if action.label == 'Sell' %}#2563eb{% elif action.label == 'Purchase' %}#4b5563{% else %}#7c3aed{% endif %}; color: white;"
+       hover:opacity-90>
+        {{ action.icon }} {{ action.label }}
+    </a>
+    {% endfor %}
+    
+    <!-- Context-aware action buttons from ActionMixin -->
+    {% if product.can_edit %}
+    <a href="{{ product.get_action_url:'edit' }}" 
+       class="inline-flex items-center gap-1.5 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
+        ✏️ Edit
+    </a>
     {% endif %}
-    <a href="{% url 'inventory:purchase_create' %}?product_spec={{ product.pk }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">Purchase</a>
-    <a href="{% url 'credit:debt_create' %}?product_spec={{ product.pk }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">Credit Sale</a>
+    
+    {% if product.can_delete %}
+    <a href="{{ product.get_action_url:'delete' }}" 
+       class="inline-flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-md hover:bg-red-50 transition-colors">
+        🗑️ Delete
+    </a>
+    {% endif %}
+</div>
+
+<!-- Smart Insights Section -->
+<div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-4 mb-6">
+    <h3 class="text-sm font-semibold text-blue-800 mb-2">💡 Smart Insights</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-md p-3 shadow-sm">
+            <span class="text-xs text-gray-500">Profit Margin</span>
+            <p class="text-lg font-bold {% if product.get_profit_margin_percent > 20 %}text-green-600{% elif product.get_profit_margin_percent > 10 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                {{ product.get_profit_margin_percent|floatformat:1 }}%
+            </p>
+        </div>
+        {% if product.budget_monthly_sales_qty > 0 %}
+        <div class="bg-white rounded-md p-3 shadow-sm">
+            <span class="text-xs text-gray-500">Suggested Reorder</span>
+            <p class="text-lg font-bold text-blue-600">{{ product.get_reorder_quantity_suggestion }} units</p>
+        </div>
+        {% endif %}
+        <div class="bg-white rounded-md p-3 shadow-sm">
+            <span class="text-xs text-gray-500">Stock Status</span>
+            <p class="text-lg font-bold {{ product.get_status_badge.color|cut:'bg-'|cut:'-100'|cut:'text-' }}">{{ product.get_status_label }}</p>
+        </div>
+    </div>
 </div>
 
 <div class="border-b border-gray-200 mb-6">
