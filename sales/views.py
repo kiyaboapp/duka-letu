@@ -3,6 +3,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, D
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.utils import timezone
+from datetime import datetime
 from decimal import Decimal
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Count
 from django.db.models.functions import Coalesce
@@ -29,8 +30,16 @@ class SaleListView(ListView):
         product = self.request.GET.get('product')
 
         if date_from:
+            try:
+                date_from = datetime.strptime(date_from, '%B %-d, %Y').date()
+            except ValueError:
+                pass
             queryset = queryset.filter(sale_date__date__gte=date_from)
         if date_to:
+            try:
+                date_to = datetime.strptime(date_to, '%B %-d, %Y').date()
+            except ValueError:
+                pass
             queryset = queryset.filter(sale_date__date__lte=date_to)
         if product:
             queryset = queryset.filter(product_spec__product__name__icontains=product)
