@@ -9,15 +9,15 @@
 </div>
 
 <div class="grid grid-cols-3 gap-4 mb-6">
-    <div class="bg-white rounded-lg border border-gray-200 p-4 border-l-4 border-l-gray-400">
+    <div class="bg-white rounded-lg border border-gray-200 p-4" style="border-left:4px solid #9ca3af">
         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Total Cost</p>
         <p class="text-2xl font-bold text-gray-900 tabular-nums mt-1">TZS {{ total_cost|floatformat:0|intcomma }}</p>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-4 border-l-4 border-l-red-500">
+    <div class="bg-white rounded-lg border border-gray-200 p-4" style="border-left:4px solid #ef4444">
         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Accumulated Depreciation</p>
         <p class="text-2xl font-bold text-red-600 tabular-nums mt-1">TZS {{ total_acc_dep|floatformat:0|intcomma }}</p>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-4 border-l-4 border-l-emerald-500">
+    <div class="bg-white rounded-lg border border-gray-200 p-4" style="border-left:4px solid #10b981">
         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Net Book Value</p>
         <p class="text-2xl font-bold text-emerald-600 tabular-nums mt-1">TZS {{ total_nbv|floatformat:0|intcomma }}</p>
     </div>

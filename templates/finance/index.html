@@ -14,15 +14,15 @@
 
 <!-- KPI row -->
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 border-l-4 border-l-red-500">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5" style="border-left:4px solid #ef4444">
         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Overdue</p>
         <p class="text-2xl font-bold text-red-600 tabular-nums mt-1">{{ overdue|length }}</p>
     </div>
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 border-l-4 border-l-amber-500">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5" style="border-left:4px solid #f59e0b">
         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Due This Month</p>
         <p class="text-2xl font-bold text-amber-600 tabular-nums mt-1">{{ due_this_month|length }}</p>
     </div>
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 border-l-4 border-l-emerald-500">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5" style="border-left:4px solid #10b981">
         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Paid This Month</p>
         <p class="text-2xl font-bold text-emerald-600 tabular-nums mt-1">TZS {{ paid_this_month|floatformat:0|intcomma }}</p>
     </div>
