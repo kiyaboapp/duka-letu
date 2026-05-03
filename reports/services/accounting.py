@@ -187,10 +187,17 @@ class AccountingService:
             - self.drawings_qty()
         )
 
+    def closing_stock_qty(self) -> Decimal:
+        """Closing stock = opening qty + period inflows - period outflows."""
+        from datetime import timedelta
+        prior_end = self.start - timedelta(days=1)
+        prior_svc = AccountingService(date(2000, 1, 1), prior_end, self.spec_id)
+        opening_qty = prior_svc._closing_stock_qty()
+        period_delta = self._closing_stock_qty()
+        return max(Decimal('0'), opening_qty + period_delta)
+
     def closing_stock_value(self) -> Decimal:
-        closing_qty = self._closing_stock_qty()
-        wac = self.weighted_average_cost()
-        return closing_qty * wac
+        return self.closing_stock_qty() * self.weighted_average_cost()
 
     def cogs(self) -> Decimal:
         """COGS = Opening Stock + Net Purchases - Closing Stock"""
@@ -246,6 +253,7 @@ class AccountingService:
         opening = self.opening_stock_value()
         cogas = opening + net_purch
         closing = self.closing_stock_value()
+        closing_qty = self.closing_stock_qty()
         cogs = cogas - closing
         gross_profit = net_sales - cogs
 
