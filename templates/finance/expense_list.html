@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Expenses — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Expense Items</h1>{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Expense Items</h1>
+    <a href="{% url 'finance:expense_create' %}" class="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">+ New Expense</a>
+</div>
+
+<form method="get" class="flex gap-3 mb-4">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search by name…"
+           class="flex-1 max-w-xs px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500">
+    <select name="active" class="px-3 py-2 text-sm border border-gray-300 rounded-md">
+        <option value="">All</option>
+        <option value="1" {% if active == '1' %}selected{% endif %}>Active</option>
+        <option value="0" {% if active == '0' %}selected{% endif %}>Inactive</option>
+    </select>
+    <button type="submit" class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200">Filter</button>
+</form>
+
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <table class="min-w-full text-sm divide-y divide-gray-100">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Name</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Current Rate</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                <th class="px-4 py-3"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for item in items %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-2 font-medium text-gray-900">{{ item.name }}</td>
+                <td class="px-4 py-2 text-gray-500">{{ item.expense_type.name }}</td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-900">TZS {{ item.current_rate|floatformat:0|intcomma }}</td>
+                <td class="px-4 py-2">
+                    {% if item.is_active %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Active</span>
+                    {% else %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Inactive</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-2 text-right">
+                    <a href="{% url 'finance:expense_detail' item.pk %}" class="text-blue-600 hover:text-blue-800 text-xs font-medium">View</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">No expense items found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

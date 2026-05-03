@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Purchase Summary — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Purchase Summary</h1>{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold text-gray-900">Purchase Summary</h1>
+    <a href="{% url 'reports:index' %}" class="text-sm text-gray-500 hover:text-gray-700">&larr; Reports</a>
+</div>
+
+{% include 'reports/_period_selector.html' %}
+
+<div class="bg-white rounded-lg border border-gray-200 p-4 mb-6 inline-block">
+    <p class="text-xs text-gray-500 uppercase tracking-wide">Total Purchases</p>
+    <p class="text-2xl font-bold text-gray-900 tabular-nums mt-1">TZS {{ total|floatformat:0|intcomma }}</p>
+</div>
+
+{% for purchase in purchases %}
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
+    <div class="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+        <div>
+            <span class="font-semibold text-gray-800">{{ purchase.supplier.name|default:"Unknown Supplier" }}</span>
+            <span class="text-gray-400 text-sm ml-2">{{ purchase.purchase_date|date:"j M Y" }}</span>
+            {% if purchase.invoice_number %}<span class="text-xs text-gray-400 ml-2">Inv: {{ purchase.invoice_number }}</span>{% endif %}
+        </div>
+    </div>
+    <table class="min-w-full text-sm divide-y divide-gray-100">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Product</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Qty</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Unit Cost</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Amount</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for line in purchase.details.all %}
+            <tr>
+                <td class="px-4 py-2 text-gray-800">{{ line.product_spec.product.name }} {% if line.product_spec.spec_value %}<span class="text-gray-400 text-xs">({{ line.product_spec.spec_value.value }})</span>{% endif %}</td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-600">{{ line.quantity }}</td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-600">{{ line.unit_cost|floatformat:0|intcomma }}</td>
+                <td class="px-4 py-2 text-right tabular-nums font-medium text-gray-900">{{ line.amount|floatformat:0|intcomma }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% empty %}
+<div class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">No purchases in this period</div>
+{% endfor %}
+{% endblock %}

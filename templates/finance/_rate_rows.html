@@ -1,0 +1,9 @@
+{% load humanize %}
+<div id="rate-rows" class="space-y-1 text-sm">
+    {% for rate in rates %}
+    <div class="flex justify-between py-1 border-b border-gray-50">
+        <span class="text-gray-500">{{ rate.effective_from|date:"j M Y" }}</span>
+        <span class="font-medium text-gray-900">TZS {{ rate.amount|floatformat:0|intcomma }}</span>
+    </div>
+    {% endfor %}
+</div>

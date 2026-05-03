@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Balance Sheet — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Balance Sheet</h1>{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold text-gray-900">Balance Sheet</h1>
+    <a href="{% url 'reports:index' %}" class="text-sm text-gray-500 hover:text-gray-700">&larr; Reports</a>
+</div>
+
+{% include 'reports/_period_selector.html' %}
+
+<p class="text-sm text-gray-500 mb-4">As at {{ data.as_of|date:"j F Y" }}</p>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Assets -->
+    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div class="px-5 py-3 bg-gray-50 border-b border-gray-200">
+            <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Assets</h2>
+        </div>
+        <div class="p-5 space-y-4 text-sm">
+            <div>
+                <p class="font-semibold text-gray-600 mb-2">Non-Current Assets</p>
+                <div class="flex justify-between py-1"><span class="text-gray-600">Fixed Assets (Cost)</span><span class="tabular-nums">{{ data.fixed_assets_cost|floatformat:0|intcomma }}</span></div>
+                <div class="flex justify-between py-1 text-red-600"><span>Less: Accumulated Depreciation</span><span class="tabular-nums">({{ data.accumulated_depreciation|floatformat:0|intcomma }})</span></div>
+                <div class="flex justify-between py-1 font-semibold border-t border-gray-100 mt-1"><span>Net Book Value</span><span class="tabular-nums">{{ data.net_book_value|floatformat:0|intcomma }}</span></div>
+            </div>
+            <div>
+                <p class="font-semibold text-gray-600 mb-2">Current Assets</p>
+                <div class="flex justify-between py-1"><span class="text-gray-600">Inventory</span><span class="tabular-nums">{{ data.inventory|floatformat:0|intcomma }}</span></div>
+                <div class="flex justify-between py-1"><span class="text-gray-600">Gross Receivables</span><span class="tabular-nums">{{ data.gross_receivables|floatformat:0|intcomma }}</span></div>
+                <div class="flex justify-between py-1 text-red-600"><span>Less: Bad Debt Provision</span><span class="tabular-nums">({{ data.bad_debt_provision|floatformat:0|intcomma }})</span></div>
+                <div class="flex justify-between py-1"><span class="text-gray-600">Net Receivables</span><span class="tabular-nums">{{ data.net_receivables|floatformat:0|intcomma }}</span></div>
+                <div class="flex justify-between py-1"><span class="text-gray-600">Cash &amp; Equivalents</span><span class="tabular-nums">{{ data.cash_and_equivalents|floatformat:0|intcomma }}</span></div>
+                <div class="flex justify-between py-1 font-semibold border-t border-gray-100 mt-1"><span>Total Current Assets</span><span class="tabular-nums">{{ data.total_current_assets|floatformat:0|intcomma }}</span></div>
+            </div>
+            <div class="flex justify-between py-2 font-bold text-base border-t-2 border-gray-300">
+                <span>TOTAL ASSETS</span><span class="tabular-nums">TZS {{ data.total_assets|floatformat:0|intcomma }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liabilities & Equity -->
+    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div class="px-5 py-3 bg-gray-50 border-b border-gray-200">
+            <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Liabilities &amp; Equity</h2>
+        </div>
+        <div class="p-5 space-y-4 text-sm">
+            <div>
+                <p class="font-semibold text-gray-600 mb-2">Non-Current Liabilities</p>
+                <div class="flex justify-between py-1"><span class="text-gray-600">Long-Term Liabilities</span><span class="tabular-nums">{{ data.long_term_liabilities|floatformat:0|intcomma }}</span></div>
+            </div>
+            <div>
+                <p class="font-semibold text-gray-600 mb-2">Current Liabilities</p>
+                <div class="flex justify-between py-1"><span class="text-gray-600">Outstanding Obligations</span><span class="tabular-nums">{{ data.current_liabilities|floatformat:0|intcomma }}</span></div>
+            </div>
+            <div class="flex justify-between py-1 font-semibold border-t border-gray-100"><span>Total Liabilities</span><span class="tabular-nums">{{ data.total_liabilities|floatformat:0|intcomma }}</span></div>
+            <div>
+                <p class="font-semibold text-gray-600 mb-2">Equity</p>
+                <div class="flex justify-between py-1"><span class="text-gray-600">Owner's Equity</span><span class="tabular-nums">{{ data.total_equity|floatformat:0|intcomma }}</span></div>
+            </div>
+            <div class="flex justify-between py-2 font-bold text-base border-t-2 border-gray-300">
+                <span>TOTAL LIABILITIES &amp; EQUITY</span><span class="tabular-nums">TZS {{ data.total_assets|floatformat:0|intcomma }}</span>
+            </div>
+            {% if not data.equation_holds %}
+            <p class="text-xs text-red-600 font-medium">⚠ Equation imbalance detected — check data integrity.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

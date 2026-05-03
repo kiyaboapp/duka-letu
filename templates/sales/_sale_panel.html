@@ -1,0 +1,22 @@
+{% load humanize %}
+<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4" id="sale-panel">
+    <h3 class="text-sm font-semibold text-blue-800 mb-3">New Sale</h3>
+    <form hx-post="{% url 'sales:sale_create_partial' %}"
+          hx-target="#sale-panel"
+          hx-swap="outerHTML"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {% csrf_token %}
+        {% for field in form %}
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<p class="text-xs text-red-600">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="sm:col-span-2 lg:col-span-3 flex gap-2 mt-1">
+            <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">Record Sale</button>
+            <button type="button" onclick="document.getElementById('sale-panel').remove()"
+                    class="px-3 py-1.5 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+        </div>
+    </form>
+</div>

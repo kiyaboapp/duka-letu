@@ -1,0 +1,7 @@
+<div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4" id="sale-panel">
+    <p class="text-sm text-green-800 font-medium">&#10003; Sale recorded successfully.</p>
+    <button hx-get="{% url 'sales:sale_create_partial' %}"
+            hx-target="#sale-panel"
+            hx-swap="outerHTML"
+            class="mt-2 text-xs text-blue-600 hover:underline">Record another sale</button>
+</div>

@@ -1,0 +1,38 @@
+{% load humanize %}
+<tr id="obligation-row-{{ obligation.pk }}">
+    <td colspan="4" class="px-4 py-3 bg-blue-50">
+        <form hx-post="{% url 'finance:obligation_pay' obligation.pk %}"
+              hx-target="#obligation-row-{{ obligation.pk }}"
+              hx-swap="outerHTML"
+              class="flex flex-wrap items-end gap-3">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Amount (TZS)</label>
+                <input type="number" name="amount_paid" value="{{ obligation.balance }}" step="0.01" min="0.01"
+                       class="w-36 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Method</label>
+                <select name="payment_method" class="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500">
+                    {% for pm in form.payment_method.field.queryset %}
+                    <option value="{{ pm.pk }}">{{ pm.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                <input type="datetime-local" name="payment_date" value="{{ form.initial.payment_date }}"
+                       class="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">Save</button>
+                <button type="button"
+                        hx-get="{% url 'finance:obligation_pay' obligation.pk %}"
+                        hx-target="#obligation-row-{{ obligation.pk }}"
+                        hx-swap="outerHTML"
+                        onclick="this.closest('tr').outerHTML=''"
+                        class="px-3 py-1.5 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </td>
+</tr>

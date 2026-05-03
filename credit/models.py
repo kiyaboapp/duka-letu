@@ -14,6 +14,10 @@ class Debtor(models.Model):
     phone_1 = models.CharField(max_length=30, blank=True)
     phone_2 = models.CharField(max_length=30, blank=True)
     nida_id = models.CharField(max_length=255, blank=True, verbose_name='NIDA ID')
+    credit_limit = models.DecimalField(max_digits=15, decimal_places=2, default=0,
+                                       help_text='Max outstanding balance. 0 = no limit.')
+    is_blocked = models.BooleanField(default=False,
+                                     help_text='Block new credit sales for this debtor.')
 
     class Meta:
         ordering = ['name']
@@ -43,6 +47,13 @@ class Debtor(models.Model):
         return self.total_debt - self.total_paid
 
 
+    @property
+    def is_over_limit(self):
+        if self.credit_limit == 0:
+            return False
+        return self.outstanding_balance > self.credit_limit
+
+
 class Debt(models.Model):
     """A single credit sale line — creates an accounts receivable."""
     debtor = models.ForeignKey(Debtor, on_delete=models.PROTECT, related_name='debts')
@@ -52,6 +63,10 @@ class Debt(models.Model):
     discount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     sale_date = models.DateTimeField(default=timezone.now)
     expected_payment_date = models.DateField(null=True, blank=True)
+    reference_number = models.CharField(max_length=50, blank=True, db_index=True)
+    payment_method = models.ForeignKey(PaymentMethod, on_delete=models.SET_NULL,
+                                       null=True, blank=True,
+                                       help_text='Expected repayment channel.')
 
     class Meta:
         ordering = ['-sale_date']
@@ -82,6 +97,9 @@ class Debt(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+        if not self.reference_number:
+            self.reference_number = f"DT-{self.sale_date.year}-{self.pk:04d}"
+            Debt.objects.filter(pk=self.pk).update(reference_number=self.reference_number)
         self.product_spec.update_stock()
 
 

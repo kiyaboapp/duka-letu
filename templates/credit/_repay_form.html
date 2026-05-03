@@ -1,0 +1,28 @@
+{% load humanize %}
+<tr id="debt-row-{{ debt.pk }}">
+    <td colspan="5" class="px-4 py-3 bg-blue-50">
+        <form hx-post="{% url 'credit:debtor_repay' debtor.pk debt.pk %}"
+              hx-target="#debt-row-{{ debt.pk }}"
+              hx-swap="outerHTML"
+              class="flex flex-wrap items-end gap-3">
+            {% csrf_token %}
+            <input type="hidden" name="debt" value="{{ debt.pk }}">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Amount (TZS)</label>
+                <input type="number" name="amount" value="{{ debt.balance }}" step="0.01" min="0.01"
+                       class="w-36 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                <input type="date" name="return_date"
+                       class="px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">Save</button>
+                <button type="button"
+                        onclick="this.closest('tr').outerHTML=''"
+                        class="px-3 py-1.5 bg-white text-gray-600 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </td>
+</tr>

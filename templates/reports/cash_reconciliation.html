@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Cash Reconciliation — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Cash Reconciliation</h1>{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold text-gray-900">Cash Reconciliation</h1>
+    <a href="{% url 'reports:index' %}" class="text-sm text-gray-500 hover:text-gray-700">&larr; Reports</a>
+</div>
+
+{% include 'reports/_period_selector.html' %}
+
+{% for session in sessions %}
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
+    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div>
+            <span class="font-semibold text-gray-900">{{ session.session_date|date:"j F Y" }}</span>
+            <span class="ml-2 text-xs text-gray-500">Opened by: {{ session.opened_by }}</span>
+        </div>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+            {% if session.status == 'CLOSED' %}bg-green-100 text-green-800
+            {% elif session.status == 'VARIANCE' %}bg-red-100 text-red-800
+            {% else %}bg-blue-100 text-blue-800{% endif %}">
+            {{ session.get_status_display }}
+        </span>
+    </div>
+    {% if session.balances.all %}
+    <table class="min-w-full text-sm divide-y divide-gray-100">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Method</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">System Expected</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Physical Count</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Variance</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for bal in session.balances.all %}
+            <tr>
+                <td class="px-4 py-2 text-gray-800">{{ bal.payment_method.name }}</td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-600">{{ bal.system_expected_balance|floatformat:0|intcomma }}</td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-900">{{ bal.physical_closing_balance|floatformat:0|intcomma }}</td>
+                <td class="px-4 py-2 text-right tabular-nums {% if bal.variance_amount == 0 %}text-green-700{% else %}text-red-600{% endif %}">
+                    {{ bal.variance_amount|floatformat:0|intcomma }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="px-5 py-4 text-sm text-gray-400">No balance records for this session.</p>
+    {% endif %}
+</div>
+{% empty %}
+<div class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">No sessions in this period.</div>
+{% endfor %}
+{% endblock %}

@@ -189,6 +189,39 @@ def index(request):
     return redirect('catalog:product_list')
 
 
+def product_sell_partial(request, pk):
+    """HTMX: return sale form pre-filled with this product."""
+    from sales.forms import SaleForm
+    spec = get_object_or_404(ProductSpec, pk=pk)
+    form = SaleForm(initial={
+        'product_spec': spec.pk,
+        'unit_price': spec.default_selling_price,
+    })
+    return render(request, 'catalog/_sell_form.html', {'form': form, 'spec': spec})
+
+
+def product_purchase_partial(request, pk):
+    """HTMX: return purchase form pre-filled with this product."""
+    from inventory.forms import PurchaseDetailForm
+    spec = get_object_or_404(ProductSpec, pk=pk)
+    form = PurchaseDetailForm(initial={
+        'product_spec': spec.pk,
+        'unit_cost': spec.default_cost_price,
+    })
+    return render(request, 'catalog/_purchase_form.html', {'form': form, 'spec': spec})
+
+
+def product_credit_sale_partial(request, pk):
+    """HTMX: return credit sale form pre-filled with this product."""
+    from credit.forms import DebtForm
+    spec = get_object_or_404(ProductSpec, pk=pk)
+    form = DebtForm(initial={
+        'product_spec': spec.pk,
+        'unit_price': spec.default_selling_price,
+    })
+    return render(request, 'catalog/_credit_sale_form.html', {'form': form, 'spec': spec})
+
+
 def product_spec_search(request):
     """
     JSON API: search product specs by name/brand/spec.

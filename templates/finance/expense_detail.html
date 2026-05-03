@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}{{ item.name }} — Finance{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">{{ item.name }}</h1>{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ item.name }}</h1>
+        <p class="text-sm text-gray-500">{{ item.expense_type.name }}</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'finance:expense_list' %}" class="text-sm text-gray-500 hover:text-gray-700">&larr; Expenses</a>
+        <form method="post" action="{% url 'finance:expense_toggle' item.pk %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="px-3 py-2 text-sm font-medium border rounded-md
+                {% if item.is_active %}text-red-600 border-red-200 hover:bg-red-50{% else %}text-green-600 border-green-200 hover:bg-green-50{% endif %}">
+                {% if item.is_active %}Deactivate{% else %}Activate{% endif %}
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <!-- Info -->
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Details</h2>
+        <dl class="space-y-2 text-sm">
+            <div class="flex justify-between"><dt class="text-gray-500">Current Rate</dt><dd class="font-semibold text-gray-900">TZS {{ item.current_rate|floatformat:0|intcomma }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">Start Date</dt><dd class="text-gray-700">{{ item.start_date|date:"j M Y" }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">End Date</dt><dd class="text-gray-700">{{ item.end_date|date:"j M Y"|default:"Ongoing" }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500">Status</dt>
+                <dd>{% if item.is_active %}<span class="text-green-700 font-medium">Active</span>{% else %}<span class="text-gray-500">Inactive</span>{% endif %}</dd>
+            </div>
+        </dl>
+        {% if item.description %}<p class="text-xs text-gray-400 mt-3">{{ item.description }}</p>{% endif %}
+    </div>
+
+    <!-- Rate history -->
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Rate History</h2>
+            <a href="{% url 'finance:expense_rate_create' item.pk %}" class="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Change Rate</a>
+        </div>
+        <div id="rate-rows" class="space-y-1 text-sm">
+            {% for rate in item.rates.all %}
+            <div class="flex justify-between py-1 border-b border-gray-50">
+                <span class="text-gray-500">{{ rate.effective_from|date:"j M Y" }}</span>
+                <span class="font-medium text-gray-900">TZS {{ rate.amount|floatformat:0|intcomma }}</span>
+            </div>
+            {% empty %}
+            <p class="text-gray-400 text-xs">No rates recorded.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Recurrence -->
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Recurrence</h2>
+        {% for r in item.recurrences.all %}
+        <div class="text-sm space-y-1">
+            <div class="flex justify-between"><span class="text-gray-500">Type</span><span class="font-medium">{{ r.get_recurrence_type_display }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Frequency</span><span>Every {{ r.frequency_value }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Day of Month</span><span>{{ r.specific_day_of_month }}</span></div>
+        </div>
+        {% empty %}
+        <p class="text-gray-400 text-xs">No recurrence pattern set.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Obligations -->
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-700">Obligations</h2>
+        {% if latest_unpaid %}
+        <button hx-get="{% url 'finance:obligation_pay' latest_unpaid.pk %}"
+                hx-target="#obligation-row-{{ latest_unpaid.pk }}"
+                hx-swap="outerHTML"
+                class="nudge-btn text-blue-600 border-blue-200 hover:bg-blue-50">Pay Latest Unpaid</button>
+        {% endif %}
+    </div>
+    <table class="min-w-full text-sm divide-y divide-gray-100">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Due Date</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Amount Due</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Paid</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Balance</th>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                <th class="px-4 py-2"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for o in overdue %}
+            {% include 'finance/_obligation_row_detail.html' %}
+            {% endfor %}
+            {% for o in pending %}
+            {% include 'finance/_obligation_row_detail.html' %}
+            {% endfor %}
+            {% for o in paid %}
+            {% include 'finance/_obligation_row_detail.html' %}
+            {% endfor %}
+            {% if not overdue and not pending and not paid %}
+            <tr><td colspan="6" class="px-4 py-6 text-center text-gray-400">No obligations yet.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Payments -->
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="px-5 py-3 border-b border-gray-100">
+        <h2 class="text-sm font-semibold text-gray-700">Payment History</h2>
+    </div>
+    <table class="min-w-full text-sm divide-y divide-gray-100">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Amount</th>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Method</th>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Reference</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for p in payments %}
+            <tr>
+                <td class="px-4 py-2 text-gray-600">{{ p.payment_date|date:"j M Y" }}</td>
+                <td class="px-4 py-2 text-right tabular-nums font-medium text-gray-900">TZS {{ p.amount_paid|floatformat:0|intcomma }}</td>
+                <td class="px-4 py-2 text-gray-600">{{ p.payment_method.name }}</td>
+                <td class="px-4 py-2 text-gray-400 text-xs">{{ p.reference_number|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No payments recorded.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

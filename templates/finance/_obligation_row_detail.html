@@ -1,0 +1,26 @@
+{% load humanize %}
+<tr id="obligation-row-{{ o.pk }}">
+    <td class="px-4 py-2 text-gray-600">{{ o.due_date|date:"j M Y" }}</td>
+    <td class="px-4 py-2 text-right tabular-nums text-gray-900">{{ o.amount_due|floatformat:0|intcomma }}</td>
+    <td class="px-4 py-2 text-right tabular-nums text-gray-600">{{ o.amount_paid|floatformat:0|intcomma }}</td>
+    <td class="px-4 py-2 text-right tabular-nums font-medium {% if o.balance > 0 %}text-red-600{% else %}text-green-700{% endif %}">{{ o.balance|floatformat:0|intcomma }}</td>
+    <td class="px-4 py-2">
+        {% if o.payment_status == 'PAID' %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Paid</span>
+        {% elif o.payment_status == 'OVERDUE' %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Overdue</span>
+        {% elif o.payment_status == 'PARTIAL' %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Partial</span>
+        {% else %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Pending</span>
+        {% endif %}
+    </td>
+    <td class="px-4 py-2 text-right">
+        {% if o.balance > 0 %}
+        <button hx-get="{% url 'finance:obligation_pay' o.pk %}"
+                hx-target="#obligation-row-{{ o.pk }}"
+                hx-swap="outerHTML"
+                class="nudge-btn text-blue-600 border-blue-200 hover:bg-blue-50">Pay</button>
+        {% endif %}
+    </td>
+</tr>

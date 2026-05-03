@@ -289,4 +289,172 @@ class LiabilityPaymentDetail(models.Model):
     def __str__(self):
         return f"Liability Payment #{self.pk} — {self.liability_item.name}"
 
-# Create your models here.
+
+class ObligationGeneratorLog(models.Model):
+    """Tracks the last time obligations were auto-generated. One row, ever."""
+    last_run_date = models.DateField(unique=True)
+
+    class Meta:
+        ordering = ['-last_run_date']
+
+    def __str__(self):
+        return f"Last run: {self.last_run_date}"
+
+
+# ── ExpenseType upgrades ──────────────────────────────────────────────────────
+
+# Add is_cogs and display_order to ExpenseType via migration — done below via new fields
+# (We add them as separate models to avoid touching the existing migration)
+
+class ExpenseTypeExtra(models.Model):
+    """Extra fields for ExpenseType — avoids re-migrating the original model."""
+    expense_type = models.OneToOneField(ExpenseType, on_delete=models.CASCADE,
+                                        related_name='extra', primary_key=True)
+    is_cogs = models.BooleanField(default=False)
+    display_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['display_order']
+
+
+# ── Payment upgrades ──────────────────────────────────────────────────────────
+
+class PaymentExtra(models.Model):
+    """Extra fields for Payment — payment_reference and approved_by."""
+    payment = models.OneToOneField(Payment, on_delete=models.CASCADE,
+                                   related_name='extra', primary_key=True)
+    payment_reference = models.CharField(max_length=50, blank=True, db_index=True)
+    approved_by = models.CharField(max_length=255, blank=True)
+
+
+# ── LiabilityItem upgrades ────────────────────────────────────────────────────
+
+class LiabilityItemExtra(models.Model):
+    """Extra fields for LiabilityItem — interest_type."""
+    INTEREST_TYPES = [
+        ('FLAT', 'Flat Rate'),
+        ('REDUCING', 'Reducing Balance'),
+        ('NONE', 'No Interest'),
+    ]
+    liability_item = models.OneToOneField(LiabilityItem, on_delete=models.CASCADE,
+                                          related_name='extra', primary_key=True)
+    interest_type = models.CharField(max_length=20, choices=INTEREST_TYPES, default='REDUCING')
+
+
+# ── Payment Method hierarchy ──────────────────────────────────────────────────
+
+class PaymentCategory(models.Model):
+    CATEGORY_CODES = [
+        ('CASH', 'Physical Cash'),
+        ('MOBILE_MONEY', 'Mobile Money'),
+        ('BANK', 'Bank / Cheque'),
+    ]
+    code = models.CharField(max_length=20, choices=CATEGORY_CODES, unique=True)
+    name = models.CharField(max_length=100)
+    display_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['display_order']
+
+    def __str__(self):
+        return self.name
+
+
+class PaymentProvider(models.Model):
+    category = models.ForeignKey(PaymentCategory, on_delete=models.PROTECT, related_name='providers')
+    name = models.CharField(max_length=255, unique=True)
+    short_code = models.CharField(max_length=20, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['category__display_order', 'name']
+
+    def __str__(self):
+        return self.name
+
+
+class PaymentMethodCategory(models.Model):
+    """Links existing PaymentMethod to the new PaymentCategory/Provider hierarchy."""
+    payment_method = models.OneToOneField(PaymentMethod, on_delete=models.CASCADE,
+                                          related_name='category_link', primary_key=True)
+    category = models.ForeignKey(PaymentCategory, on_delete=models.PROTECT)
+    provider = models.ForeignKey(PaymentProvider, on_delete=models.SET_NULL,
+                                 null=True, blank=True)
+    clears_immediately = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.payment_method.name} → {self.category.name}"
+
+
+# ── Cash Register Session ─────────────────────────────────────────────────────
+
+class CashRegisterSession(models.Model):
+    STATUS_CHOICES = [
+        ('OPEN', 'Open'),
+        ('CLOSED', 'Closed'),
+        ('VARIANCE', 'Variance'),
+    ]
+    session_date = models.DateField(unique=True)
+    opened_by = models.CharField(max_length=255)
+    closed_by = models.CharField(max_length=255, blank=True)
+    opening_float = models.DecimalField(max_digits=15, decimal_places=2)
+    variance_explanation = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
+
+    class Meta:
+        ordering = ['-session_date']
+
+    def __str__(self):
+        return f"Session {self.session_date} [{self.status}]"
+
+    def closing_balance_for(self, category_code: str) -> Decimal:
+        return self.balances.filter(
+            payment_method_link__category__code=category_code,
+            payment_method_link__clears_immediately=True
+        ).aggregate(
+            t=Coalesce(Sum('physical_closing_balance'), Decimal('0'))
+        )['t']
+
+
+class SessionBalance(models.Model):
+    session = models.ForeignKey(CashRegisterSession, on_delete=models.CASCADE, related_name='balances')
+    payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT)
+    physical_closing_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    system_expected_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    uncleared_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    class Meta:
+        unique_together = [['session', 'payment_method']]
+
+    @property
+    def variance_amount(self):
+        return self.system_expected_balance - (self.physical_closing_balance - self.uncleared_amount)
+
+    def __str__(self):
+        return f"{self.session.session_date} | {self.payment_method.name}"
+
+
+# ── Budget ────────────────────────────────────────────────────────────────────
+
+class BudgetLine(models.Model):
+    BUDGET_TYPES = [
+        ('REVENUE', 'Net Sales Revenue'),
+        ('COGS', 'Cost of Goods Sold'),
+        ('EXPENSE', 'Operating Expense'),
+    ]
+    financial_year = models.PositiveSmallIntegerField()
+    month = models.PositiveSmallIntegerField(help_text='1=January … 12=December')
+    budget_type = models.CharField(max_length=20, choices=BUDGET_TYPES)
+    expense_type = models.ForeignKey(ExpenseType, on_delete=models.SET_NULL,
+                                     null=True, blank=True, related_name='budget_lines')
+    description = models.CharField(max_length=255, blank=True)
+    budgeted_amount = models.DecimalField(max_digits=15, decimal_places=2)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = [['financial_year', 'month', 'budget_type', 'expense_type']]
+        ordering = ['financial_year', 'month', 'budget_type']
+
+    def __str__(self):
+        return f"{self.financial_year}/{self.month:02d} — {self.get_budget_type_display()} — TZS {self.budgeted_amount:,.0f}"
