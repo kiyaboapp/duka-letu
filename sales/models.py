@@ -51,9 +51,8 @@ class Sale(TimestampedModel, ActionMixin):
         return reverse('sales:sale_delete', kwargs={'pk': self.pk})
     
     def get_return_url(self):
-        """URL to create a return for this sale."""
         from django.urls import reverse
-        return f"{reverse('sales:return_inward_create')}?sale={self.pk}"
+        return reverse('sales:sale_return', kwargs={'pk': self.pk})
     
     def get_duplicate_url(self):
         """URL to duplicate this sale."""

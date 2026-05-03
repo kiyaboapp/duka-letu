@@ -1,11 +1,11 @@
-from django.shortcuts import render, redirect
-from django.views.generic import ListView, CreateView
+from django.shortcuts import render, redirect, get_object_or_404
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.urls import reverse_lazy
 from django.contrib import messages
 from decimal import Decimal
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Count
 from django.db.models.functions import Coalesce
-from .models import Purchase, PurchaseDetail, Supplier
+from .models import Purchase, PurchaseDetail, Supplier, ReturnOutward
 from .forms import PurchaseForm, PurchaseDetailFormSet, ReturnOutwardForm
 
 _DEC = DecimalField(max_digits=15, decimal_places=2)
@@ -92,5 +92,115 @@ class PurchaseCreateView(CreateView):
 
 def index(request):
     return render(request, 'inventory/index.html')
+
+
+class SupplierListView(ListView):
+    model = Supplier
+    template_name = 'inventory/supplier_list.html'
+    context_object_name = 'suppliers'
+
+    def get_queryset(self):
+        return Supplier.objects.annotate(purchase_count=Count('purchases')).order_by('name')
+
+
+class SupplierDetailView(DetailView):
+    model = Supplier
+    template_name = 'inventory/supplier_detail.html'
+    context_object_name = 'supplier'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        supplier = self.object
+        context['purchases'] = supplier.purchases.prefetch_related('details').order_by('-purchase_date')[:20]
+        context['total_spent'] = sum(p.total_amount for p in supplier.purchases.all())
+        context['purchase_count'] = supplier.purchases.count()
+        context['last_purchase'] = supplier.purchases.order_by('-purchase_date').first()
+        return context
+
+
+class PurchaseDetailView(DetailView):
+    model = Purchase
+    template_name = 'inventory/purchase_detail.html'
+    context_object_name = 'purchase'
+
+    def get_queryset(self):
+        return Purchase.objects.select_related('supplier').prefetch_related(
+            'details__product_spec__product',
+            'details__product_spec__spec_value',
+            'details__returns',
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        purchase = self.object
+        context['return_form'] = ReturnOutwardForm()
+        context['total_with_freight'] = purchase.total_amount + purchase.carriage_inwards
+        return context
+
+
+class PurchaseUpdateView(UpdateView):
+    model = Purchase
+    form_class = PurchaseForm
+    template_name = 'inventory/purchase_update.html'
+    context_object_name = 'purchase'
+
+    def get_success_url(self):
+        return self.object.get_absolute_url()
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Purchase updated successfully.')
+        return super().form_valid(form)
+
+
+class PurchaseDeleteView(DeleteView):
+    model = Purchase
+    template_name = 'inventory/purchase_confirm_delete.html'
+    context_object_name = 'purchase'
+    success_url = reverse_lazy('inventory:index')
+
+    def get(self, request, *args, **kwargs):
+        purchase = get_object_or_404(Purchase, pk=kwargs['pk'])
+        from .models import ReturnOutward
+        if ReturnOutward.objects.filter(purchase_detail__purchase=purchase).exists():
+            messages.error(request, 'Cannot delete a purchase that has return outwards.')
+            return redirect(purchase.get_absolute_url())
+        return super().get(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        messages.success(self.request, f'Purchase #{self.object.pk} deleted.')
+        return super().form_valid(form)
+
+
+class ReturnOutwardCreateView(CreateView):
+    model = ReturnOutward
+    form_class = ReturnOutwardForm
+    template_name = 'inventory/return_outward_form.html'
+    success_url = reverse_lazy('inventory:index')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        purchase_id = self.request.GET.get('purchase')
+        if purchase_id:
+            initial['purchase_id'] = purchase_id
+        return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        purchase_id = self.request.GET.get('purchase')
+        if purchase_id:
+            context['purchase'] = get_object_or_404(
+                Purchase.objects.select_related('supplier').prefetch_related('details__product_spec__product'),
+                pk=purchase_id
+            )
+            # Limit form choices to this purchase's details
+            context['form'].fields['purchase_detail'].queryset = PurchaseDetail.objects.filter(
+                purchase_id=purchase_id
+            ).select_related('product_spec__product')
+        return context
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Return outward recorded.')
+        ret = form.save()
+        return redirect(ret.purchase_detail.purchase.get_absolute_url())
 
 # Create your views here.

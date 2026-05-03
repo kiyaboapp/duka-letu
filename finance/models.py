@@ -19,13 +19,13 @@ class PaymentMethod(TimestampedModel):
         return self.name
 
     def get_absolute_url(self):
-        return self.get_action_url('detail')
+        return '#'
 
     def get_edit_url(self):
-        return self.get_action_url('edit')
+        return '#'
 
     def get_delete_url(self):
-        return self.get_action_url('delete')
+        return '#'
 
     def can_delete(self):
         # Prevent deletion if used in transactions
@@ -59,13 +59,13 @@ class ExpenseType(TimestampedModel):
         return self.name
 
     def get_absolute_url(self):
-        return self.get_action_url('detail')
+        return '#'
 
     def get_edit_url(self):
-        return self.get_action_url('edit')
+        return '#'
 
     def get_delete_url(self):
-        return self.get_action_url('delete')
+        return '#'
 
     def can_delete(self):
         # Check if any items exist
@@ -115,13 +115,15 @@ class ExpenseItem(TimestampedModel):
         return f"{self.expense_type.name} — {self.name}"
 
     def get_absolute_url(self):
-        return self.get_action_url('detail')
+        from django.urls import reverse
+        return reverse('finance:expense_detail', kwargs={'pk': self.pk})
 
     def get_edit_url(self):
-        return self.get_action_url('edit')
+        from django.urls import reverse
+        return reverse('finance:expense_update', kwargs={'pk': self.pk})
 
     def get_delete_url(self):
-        return self.get_action_url('delete')
+        return '#'
 
     def can_edit(self):
         return self.is_active
@@ -186,13 +188,13 @@ class ExpenseRate(TimestampedModel):
         return f"{self.expense_item.name} — {self.amount} from {self.effective_from}"
 
     def get_absolute_url(self):
-        return self.get_action_url('detail')
+        return self.expense_item.get_absolute_url()
 
     def get_edit_url(self):
-        return self.get_action_url('edit')
+        return '#'
 
     def get_delete_url(self):
-        return self.get_action_url('delete')
+        return '#'
 
     def can_delete(self):
         # Can't delete if it's the only rate or currently effective

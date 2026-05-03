@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load fmt humanize %}
+{% block title %}{{ supplier.name }} — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">{{ supplier.name }}</h1>{% endblock %}
+{% block content %}
+
+<nav class="flex items-center gap-2 text-sm text-gray-500 mb-4">
+    <a href="{% url 'inventory:supplier_list' %}" class="text-blue-600 hover:text-blue-700">Suppliers</a>
+    <span>/</span>
+    <span class="text-gray-700">{{ supplier.name }}</span>
+</nav>
+
+<div class="flex items-start justify-between mb-6 pb-4 border-b border-gray-200">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ supplier.name }}</h1>
+        <div class="mt-1 space-y-0.5 text-sm text-gray-500">
+            {% if supplier.contact_person %}<div>Contact: {{ supplier.contact_person }}</div>{% endif %}
+            {% if supplier.phone %}<div>Phone: {{ supplier.phone }}</div>{% endif %}
+            {% if supplier.address %}<div>{{ supplier.address }}</div>{% endif %}
+        </div>
+        <div class="mt-2">
+            <span class="inline-block {{ supplier.get_status_badge.color }} px-2.5 py-0.5 rounded-full text-xs font-medium">{{ supplier.get_status_badge.label }}</span>
+        </div>
+    </div>
+    <a href="{{ supplier.get_purchase_url }}" class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700">+ New Purchase</a>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Total Purchases</div>
+        <div class="text-2xl font-bold text-gray-900 mt-1">{{ purchase_count }}</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Total Spent</div>
+        <div class="text-2xl font-bold text-emerald-600 mt-1">{{ total_spent|tzs }}</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Last Purchase</div>
+        <div class="text-lg font-bold text-gray-900 mt-1">{% if last_purchase %}{{ last_purchase.purchase_date|date:"j M Y" }}{% else %}—{% endif %}</div>
+    </div>
+</div>
+
+<!-- Purchase history -->
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="px-5 py-3 border-b border-gray-100">
+        <h2 class="text-sm font-semibold text-gray-700">Purchase History (last 20)</h2>
+    </div>
+    <table class="min-w-full text-sm divide-y divide-gray-100">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">ID</th>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Invoice</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Items</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for p in purchases %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-2"><a href="{{ p.get_absolute_url }}" class="text-blue-600 hover:underline">#{{ p.pk }}</a></td>
+                <td class="px-4 py-2 text-gray-500">{{ p.invoice_number|default:"—" }}</td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-600">{{ p.details.count }}</td>
+                <td class="px-4 py-2 text-right tabular-nums font-semibold text-gray-900">{{ p.total_amount|tzs }}</td>
+                <td class="px-4 py-2 text-gray-500">{{ p.purchase_date|date:"j M Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">No purchases yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

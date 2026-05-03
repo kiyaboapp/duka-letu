@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load fmt humanize %}
+{% block title %}Purchase #{{ purchase.pk }} — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Purchase #{{ purchase.pk }}</h1>{% endblock %}
+{% block content %}
+
+<nav class="flex items-center gap-2 text-sm text-gray-500 mb-4">
+    <a href="{% url 'inventory:index' %}" class="text-blue-600 hover:text-blue-700">Purchases</a>
+    <span>/</span>
+    <span class="text-gray-700">Purchase #{{ purchase.pk }}</span>
+</nav>
+
+<div class="flex items-start justify-between mb-6 pb-4 border-b border-gray-200">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Purchase #{{ purchase.pk }}</h1>
+        <p class="text-sm text-gray-500 mt-1">
+            <a href="{{ purchase.supplier.get_absolute_url }}" class="text-blue-600 hover:underline">{{ purchase.supplier.name }}</a>
+            &middot; {{ purchase.purchase_date|date:"j M Y" }}
+            {% if purchase.invoice_number %}&middot; Invoice: {{ purchase.invoice_number }}{% endif %}
+        </p>
+        <div class="mt-2">
+            <span class="inline-block {{ purchase.get_status_badge.color }} px-2.5 py-0.5 rounded-full text-xs font-medium">{{ purchase.get_status_badge.label }}</span>
+        </div>
+    </div>
+    <div class="flex gap-2">
+        {% if purchase.can_edit %}
+        <a href="{{ purchase.get_edit_url }}" class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">✏️ Edit</a>
+        {% endif %}
+        {% if purchase.can_return_items %}
+        <a href="{{ purchase.get_return_items_url }}" class="inline-flex items-center px-3 py-2 border border-orange-300 text-sm font-medium rounded-md text-orange-700 bg-white hover:bg-orange-50">↩ Return Items</a>
+        {% endif %}
+        {% if purchase.can_delete %}
+        <a href="{{ purchase.get_delete_url }}" onclick="return confirm('Delete this purchase?')"
+           class="inline-flex items-center px-3 py-2 border border-red-200 text-sm font-medium rounded-md text-red-600 bg-white hover:bg-red-50">🗑 Delete</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Summary cards -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Items</div>
+        <div class="text-2xl font-bold text-gray-900 mt-1">{{ purchase.details.count }}</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Subtotal</div>
+        <div class="text-2xl font-bold text-gray-900 mt-1">{{ purchase.total_amount|tzs }}</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Freight</div>
+        <div class="text-2xl font-bold text-blue-600 mt-1">{{ purchase.carriage_inwards|tzs }}</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Total (incl. freight)</div>
+        <div class="text-2xl font-bold text-emerald-600 mt-1">{{ total_with_freight|tzs }}</div>
+    </div>
+</div>
+
+<!-- Line items -->
+<div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6" id="add-items">
+    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-700">Line Items</h2>
+        {% if purchase.can_add_items %}
+        <a href="{% url 'inventory:purchase_create' %}?supplier={{ purchase.supplier_id }}" class="text-xs text-blue-600 hover:text-blue-800 font-medium">+ New Purchase from Same Supplier</a>
+        {% endif %}
+    </div>
+    <table class="min-w-full text-sm divide-y divide-gray-100">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Product</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Qty</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Unit Cost</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Amount</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Suggested Price</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Returns</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for detail in purchase.details.all %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3">
+                    <a href="{{ detail.product_spec.get_absolute_url }}" class="font-medium text-blue-600 hover:underline">{{ detail.product_spec.product.name }}</a>
+                    {% if detail.product_spec.spec_value %}<span class="text-gray-400 text-xs">({{ detail.product_spec.spec_value.value }})</span>{% endif %}
+                </td>
+                <td class="px-4 py-3 text-right tabular-nums">{{ detail.quantity }}</td>
+                <td class="px-4 py-3 text-right tabular-nums">{{ detail.unit_cost|tzs }}</td>
+                <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ detail.amount|tzs }}</td>
+                <td class="px-4 py-3 text-right tabular-nums text-gray-500">{{ detail.suggested_selling_price|tzs|default:"—" }}</td>
+                <td class="px-4 py-3 text-right tabular-nums">
+                    {% with ret_count=detail.returns.count %}
+                    {% if ret_count > 0 %}
+                    <span class="text-orange-600 font-medium">{{ ret_count }} return{{ ret_count|pluralize }}</span>
+                    {% else %}
+                    <span class="text-gray-400">—</span>
+                    {% endif %}
+                    {% endwith %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-4 py-6 text-center text-gray-400">No items recorded.</td></tr>
+            {% endfor %}
+        </tbody>
+        <tfoot class="bg-gray-50">
+            <tr>
+                <td colspan="3" class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Total</td>
+                <td class="px-4 py-2 text-right tabular-nums font-bold text-gray-900">{{ purchase.total_amount|tzs }}</td>
+                <td colspan="2"></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+{% if purchase.notes %}
+<div class="bg-white rounded-lg border border-gray-200 p-5">
+    <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Notes</h2>
+    <p class="text-sm text-gray-700">{{ purchase.notes }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

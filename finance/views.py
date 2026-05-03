@@ -85,6 +85,15 @@ def expense_create(request):
     return render(request, 'finance/expense_form.html', {'form': form, 'rate_form': rate_form})
 
 
+def expense_update(request, pk):
+    item = get_object_or_404(ExpenseItem, pk=pk)
+    form = ExpenseItemForm(request.POST or None, instance=item)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('finance:expense_detail', pk=item.pk)
+    return render(request, 'finance/expense_form.html', {'form': form, 'item': item, 'is_update': True})
+
+
 def expense_rate_create(request, pk):
     item = get_object_or_404(ExpenseItem, pk=pk)
     form = ExpenseRateForm(request.POST or None)

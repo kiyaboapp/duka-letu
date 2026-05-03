@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.utils import timezone
@@ -147,5 +147,74 @@ def sale_return_partial(request, pk):
 def index(request):
     from django.shortcuts import redirect
     return redirect('sales:sale_list')
+
+
+class SaleDetailView(DetailView):
+    model = Sale
+    template_name = 'sales/sale_detail.html'
+    context_object_name = 'sale'
+
+    def get_queryset(self):
+        return Sale.objects.select_related(
+            'product_spec__product', 'product_spec__spec_value',
+            'product_spec__product__brand', 'payment_method'
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        sale = self.object
+        context['returns'] = sale.returns.order_by('-sale_date')
+        context['profit'] = sale.get_profit_amount()
+        context['profit_margin'] = sale.get_profit_margin_percent()
+        context['remaining_qty'] = sale.get_remaining_quantity()
+        return context
+
+
+class SaleUpdateView(UpdateView):
+    model = Sale
+    form_class = SaleForm
+    template_name = 'sales/sale_update.html'
+    context_object_name = 'sale'
+
+    def get_success_url(self):
+        return self.object.get_absolute_url()
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Sale updated successfully.')
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        spec = self.object.product_spec
+        context['prefill_spec'] = {
+            'id': spec.pk,
+            'label': str(spec),
+            'stock': spec.current_stock,
+            'selling_price': str(spec.default_selling_price or ''),
+            'cost_price': str(spec.default_cost_price or ''),
+        }
+        return context
+
+
+class SaleDeleteView(DeleteView):
+    model = Sale
+    template_name = 'sales/sale_confirm_delete.html'
+    context_object_name = 'sale'
+    success_url = reverse_lazy('sales:sale_list')
+
+    def get_queryset(self):
+        # Only allow deletion if no returns exist
+        return Sale.objects.filter(returns__isnull=True)
+
+    def form_valid(self, form):
+        messages.success(self.request, f'Sale #{self.object.pk} deleted.')
+        return super().form_valid(form)
+
+    def get(self, request, *args, **kwargs):
+        sale = get_object_or_404(Sale, pk=kwargs['pk'])
+        if sale.returns.exists():
+            messages.error(request, 'Cannot delete a sale that has returns.')
+            return redirect(sale.get_absolute_url())
+        return super().get(request, *args, **kwargs)
 
 # Create your views here.

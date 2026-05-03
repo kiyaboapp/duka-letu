@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load fmt %}
+{% block title %}Edit Sale #{{ sale.pk }} — Kiyabo Duka{% endblock %}
+{% block page_title %}<h1 class="text-base font-semibold text-gray-800">Edit Sale #{{ sale.pk }}</h1>{% endblock %}
+{% block content %}
+
+<nav class="flex items-center gap-2 text-sm text-gray-500 mb-4">
+    <a href="{% url 'sales:sale_list' %}" class="text-blue-600 hover:text-blue-700">Sales</a>
+    <span>/</span>
+    <a href="{{ sale.get_absolute_url }}" class="text-blue-600 hover:text-blue-700">Sale #{{ sale.pk }}</a>
+    <span>/</span>
+    <span class="text-gray-700">Edit</span>
+</nav>
+
+<div class="max-w-2xl">
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div class="px-5 py-4 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+            <h2 class="text-sm font-semibold text-gray-700">Edit Sale — {{ sale.product_spec.product.name }}</h2>
+            <p class="text-xs text-gray-500 mt-0.5">Ref: {{ sale.reference_number }}</p>
+        </div>
+        <div class="p-5">
+            <!-- Product spec display (read-only) -->
+            <div class="mb-4 p-3 bg-blue-50 rounded-md border border-blue-100">
+                <div class="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">Product</div>
+                <div class="font-medium text-gray-900">{{ sale.product_spec.product.name }}{% if sale.product_spec.spec_value %} — {{ sale.product_spec.spec_value.value }}{% endif %}</div>
+                <div class="text-xs text-gray-500 mt-0.5">Current stock: {{ sale.product_spec.current_stock }} &middot; WAC: {{ sale.product_spec.cached_wac|tzs }}</div>
+                {{ form.product_spec }}
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="space-y-4">
+                    {% for field in form.visible_fields %}
+                    {% if field.name != 'product_spec' %}
+                    <div>
+                        <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
+                        </label>
+                        {{ field }}
+                        {% if field.errors %}<p class="mt-1 text-xs text-red-600">{{ field.errors.0 }}</p>{% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                    {% if form.non_field_errors %}
+                    <div class="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">{{ form.non_field_errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="flex gap-3 mt-6 pt-4 border-t border-gray-100">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">Save Changes</button>
+                    <a href="{{ sale.get_absolute_url }}" class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
