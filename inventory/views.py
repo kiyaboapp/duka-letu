@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.views.generic import ListView, CreateView
 from django.urls import reverse_lazy
 from django.contrib import messages
+from decimal import Decimal
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Count
 from django.db.models.functions import Coalesce
 from .models import Purchase, PurchaseDetail, Supplier
@@ -25,9 +26,6 @@ class PurchaseListView(ListView):
         # Calculate summary statistics
         qs = self.get_queryset()
         total_count = qs.count()
-        total_amount = qs.aggregate(total=Coalesce(Sum('details__quantity', filter=lambda q: q['details__quantity'] is not None) * F('details__unit_cost', filter=lambda q: q['details__unit_cost'] is not None), Decimal('0')))['total']
-        
-        # Simpler aggregation for total amount
         total_amount = sum(p.total_amount for p in qs)
         avg_amount = total_amount / total_count if total_count > 0 else Decimal('0')
         supplier_count = qs.values('supplier').distinct().count()

@@ -3,6 +3,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.utils import timezone
+from decimal import Decimal
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Count
 from django.db.models.functions import Coalesce
 from .models import Sale, ReturnInward
