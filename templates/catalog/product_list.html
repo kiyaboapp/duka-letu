@@ -79,7 +79,7 @@
                 {% for product in products %}
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-4 py-3">
-                        <a href="{% url 'catalog:product_detail' product.pk %}" class="font-medium text-blue-600 hover:text-blue-700">
+                        <a href="{{ product.get_absolute_url }}" class="font-medium text-blue-600 hover:text-blue-700">
                             {{ product.product.name }}
                         </a>
                     </td>
@@ -87,31 +87,37 @@
                     <td class="px-4 py-3 text-gray-500 text-xs">{{ product.product.product_type.category.name }}</td>
                     <td class="px-4 py-3 text-gray-500 text-xs">{{ product.product.brand.name|default:"—" }}</td>
                     <td class="px-4 py-3 text-right tabular-nums font-medium
-                        {% if product.current_stock <= 0 %}text-red-600{% elif product.is_low_stock %}text-yellow-600{% else %}text-gray-900{% endif %}">
+                        {% if product.is_out_of_stock %}text-red-600{% elif product.needs_reorder %}text-yellow-600{% else %}text-gray-900{% endif %}">
                         {{ product.current_stock }}
                     </td>
                     <td class="px-4 py-3 text-right tabular-nums text-gray-500">{{ product.reorder_level }}</td>
                     <td class="px-4 py-3">
-                        {% if product.current_stock <= 0 %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Out of Stock</span>
-                        {% elif product.is_low_stock %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Low Stock</span>
-                        {% else %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">OK</span>
-                        {% endif %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ product.get_status_badge_class }}">
+                            {{ product.get_status_label }}
+                        </span>
                     </td>
                     <td class="px-4 py-3">
-                        <div class="flex gap-1">
-                            {% if product.current_stock > 0 %}
-                            <a href="{% url 'sales:sale_create' %}?product_spec={{ product.pk }}"
-                               class="px-2.5 py-1 text-xs font-medium bg-green-50 text-green-700 rounded hover:bg-green-100 transition-colors">
-                                Sell
+                        <div class="flex gap-1 flex-wrap">
+                            {% for action in product.get_quick_actions %}
+                            <a href="{{ action.url }}"
+                               class="px-2.5 py-1 text-xs font-medium rounded hover:opacity-90 transition-colors"
+                               style="background-color: {% if action.label == 'Sell' %}#dcfce7{% elif action.label == 'Purchase' %}#dbeafe{% else %}#f3e8ff{% endif %}; color: {% if action.label == 'Sell' %}#166534{% elif action.label == 'Purchase' %}#1e40af{% else %}#6b21a8{% endif %};"
+                               title="{{ action.label }}">
+                                {{ action.icon }} {{ action.label }}
+                            </a>
+                            {% endfor %}
+                            <a href="{{ product.get_action_url:'view' }}"
+                               class="px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                               title="View details">
+                                👁️ View
+                            </a>
+                            {% if product.can_edit %}
+                            <a href="{{ product.get_action_url:'edit' }}"
+                               class="px-2.5 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 transition-colors"
+                               title="Edit product">
+                                ✏️ Edit
                             </a>
                             {% endif %}
-                            <a href="{% url 'catalog:product_detail' product.pk %}"
-                               class="px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors">
-                                View
-                            </a>
                         </div>
                     </td>
                 </tr>

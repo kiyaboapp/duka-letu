@@ -1,8 +1,9 @@
 from django.db import models
 from django.utils import timezone
+from apps.core.models import TimestampedModel
 
 
-class ReportSnapshot(models.Model):
+class ReportSnapshot(TimestampedModel):
     REPORT_CODES = [
         ('D1', 'Monthly Income Statement'),
         ('D2', 'Monthly Balance Sheet'),

@@ -1,9 +1,10 @@
 from django.db import models
 from django.utils import timezone
 from decimal import Decimal
+from apps.core.models import TimestampedModel
 
 
-class AssetCategory(models.Model):
+class AssetCategory(TimestampedModel):
     name = models.CharField(max_length=255, unique=True)
 
     class Meta:
@@ -12,8 +13,12 @@ class AssetCategory(models.Model):
     def __str__(self):
         return self.name
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('assets:asset_category_detail', kwargs={'pk': self.pk})
 
-class AssetType(models.Model):
+
+class AssetType(TimestampedModel):
     category = models.ForeignKey(AssetCategory, on_delete=models.PROTECT, related_name='types')
     name = models.CharField(max_length=255)
 
@@ -23,8 +28,12 @@ class AssetType(models.Model):
     def __str__(self):
         return f"{self.category.name} — {self.name}"
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('assets:asset_type_detail', kwargs={'pk': self.pk})
 
-class Asset(models.Model):
+
+class Asset(TimestampedModel):
     DEPRECIATION_METHODS = [
         ('SL', 'Straight-Line'),
         ('DB', 'Declining Balance'),
@@ -96,3 +105,7 @@ class Asset(models.Model):
     @property
     def monthly_depreciation_charge(self) -> Decimal:
         return (self.annual_depreciation_charge / 12).quantize(Decimal('0.01'))
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('assets:asset_detail', kwargs={'pk': self.pk})
