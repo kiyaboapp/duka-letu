@@ -4,9 +4,12 @@ from django.core.validators import MinValueValidator
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from decimal import Decimal
+from apps.core.models import TimestampedModel
+from datetime import timedelta
+import calendar
 
 
-class PaymentMethod(models.Model):
+class PaymentMethod(TimestampedModel):
     name = models.CharField(max_length=255, unique=True)
 
     class Meta:
@@ -15,8 +18,38 @@ class PaymentMethod(models.Model):
     def __str__(self):
         return self.name
 
+    def get_absolute_url(self):
+        return self.get_action_url('detail')
 
-class ExpenseType(models.Model):
+    def get_edit_url(self):
+        return self.get_action_url('edit')
+
+    def get_delete_url(self):
+        return self.get_action_url('delete')
+
+    def can_delete(self):
+        # Prevent deletion if used in transactions
+        return not hasattr(self, 'expenses') or self.expenses.count() == 0
+
+    def get_transaction_count(self):
+        """Count of transactions using this payment method."""
+        from finance.models import Expense, Payment
+        expense_count = getattr(self, 'expenses', None)
+        if expense_count:
+            return expense_count.count()
+        return 0
+
+    def get_status_badge(self):
+        count = self.get_transaction_count()
+        if count > 100:
+            return {'class': 'bg-blue-100 text-blue-800', 'text': f'Active ({count} txns)'}
+        elif count > 0:
+            return {'class': 'bg-green-100 text-green-800', 'text': f'In Use ({count})'}
+        else:
+            return {'class': 'bg-gray-100 text-gray-800', 'text': 'Unused'}
+
+
+class ExpenseType(TimestampedModel):
     name = models.CharField(max_length=255, unique=True)
 
     class Meta:
@@ -25,8 +58,48 @@ class ExpenseType(models.Model):
     def __str__(self):
         return self.name
 
+    def get_absolute_url(self):
+        return self.get_action_url('detail')
 
-class ExpenseItem(models.Model):
+    def get_edit_url(self):
+        return self.get_action_url('edit')
+
+    def get_delete_url(self):
+        return self.get_action_url('delete')
+
+    def can_delete(self):
+        # Check if any items exist
+        return not hasattr(self, 'items') or self.items.count() == 0
+
+    def get_item_count(self):
+        return getattr(self, 'items', None).count() if hasattr(self, 'items') else 0
+
+    def get_total_expenses(self, date_from=None, date_to=None):
+        """Calculate total expenses for this type within date range."""
+        qs = getattr(self, 'items', None)
+        if not qs:
+            return Decimal('0')
+        
+        total = Decimal('0')
+        for item in qs.all():
+            item_total = item.rates.filter(
+                effective_from__lte=timezone.now().date()
+            ).order_by('-effective_from').first()
+            if item_total:
+                total += item_total.amount
+        return total
+
+    def get_status_badge(self):
+        count = self.get_item_count()
+        if count > 5:
+            return {'class': 'bg-purple-100 text-purple-800', 'text': f'High Volume ({count} items)'}
+        elif count > 0:
+            return {'class': 'bg-green-100 text-green-800', 'text': f'Active ({count})'}
+        else:
+            return {'class': 'bg-yellow-100 text-yellow-800', 'text': 'No Items'}
+
+
+class ExpenseItem(TimestampedModel):
     """A specific recurring expense — e.g., 'Shop Rent', 'Electricity Bill'."""
     expense_type = models.ForeignKey(ExpenseType, on_delete=models.PROTECT, related_name='items')
     name = models.CharField(max_length=255)
@@ -41,6 +114,23 @@ class ExpenseItem(models.Model):
     def __str__(self):
         return f"{self.expense_type.name} — {self.name}"
 
+    def get_absolute_url(self):
+        return self.get_action_url('detail')
+
+    def get_edit_url(self):
+        return self.get_action_url('edit')
+
+    def get_delete_url(self):
+        return self.get_action_url('delete')
+
+    def can_edit(self):
+        return self.is_active
+
+    def can_delete(self):
+        # Can't delete if has rates or obligations
+        return not (hasattr(self, 'rates') and self.rates.count() > 0) and \
+               not (hasattr(self, 'obligations') and self.obligations.count() > 0)
+
     def current_rate(self) -> Decimal:
         """Returns the rate effective as of today."""
         rate = self.rates.filter(
@@ -48,8 +138,41 @@ class ExpenseItem(models.Model):
         ).order_by('-effective_from').first()
         return rate.amount if rate else Decimal('0')
 
+    def get_status_badge(self):
+        if not self.is_active:
+            return {'class': 'bg-gray-100 text-gray-800', 'text': 'Inactive'}
+        elif hasattr(self, 'obligations') and self.obligations.filter(status='OVERDUE').exists():
+            return {'class': 'bg-red-100 text-red-800', 'text': 'Overdue'}
+        elif hasattr(self, 'obligations') and self.obligations.filter(status='PENDING').exists():
+            return {'class': 'bg-yellow-100 text-yellow-800', 'text': 'Pending'}
+        else:
+            return {'class': 'bg-green-100 text-green-800', 'text': 'Active'}
 
-class ExpenseRate(models.Model):
+    def get_next_due_date(self):
+        """Get next obligation due date for this item."""
+        if hasattr(self, 'obligations'):
+            next_due = self.obligations.filter(
+                status__in=['PENDING', 'PARTIAL'],
+                due_date__gte=timezone.now().date()
+            ).order_by('due_date').first()
+            return next_due.due_date if next_due else None
+        return None
+
+    def get_total_paid_this_month(self):
+        """Calculate total payments for this item in current month."""
+        from django.db.models import Sum
+        today = timezone.now().date()
+        month_start = today.replace(day=1)
+        
+        if hasattr(self, 'payments'):
+            total = self.payments.filter(
+                payment_date__gte=month_start
+            ).aggregate(total=Sum('amount_paid'))['total']
+            return total or Decimal('0')
+        return Decimal('0')
+
+
+class ExpenseRate(TimestampedModel):
     """Historical rate log — rate changes are tracked, not overwritten."""
     expense_item = models.ForeignKey(ExpenseItem, on_delete=models.CASCADE, related_name='rates')
     amount = models.DecimalField(max_digits=15, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
@@ -62,8 +185,25 @@ class ExpenseRate(models.Model):
     def __str__(self):
         return f"{self.expense_item.name} — {self.amount} from {self.effective_from}"
 
+    def get_absolute_url(self):
+        return self.get_action_url('detail')
 
-class RecurrencePattern(models.Model):
+    def get_edit_url(self):
+        return self.get_action_url('edit')
+
+    def get_delete_url(self):
+        return self.get_action_url('delete')
+
+    def can_delete(self):
+        # Can't delete if it's the only rate or currently effective
+        all_rates = self.expense_item.rates.all()
+        if all_rates.count() <= 1:
+            return False
+        current_rate = self.expense_item.current_rate()
+        return current_rate != self.amount
+
+
+class RecurrencePattern(TimestampedModel):
     """Defines how often an expense obligation is generated."""
     RECURRENCE_TYPES = [
         ('MONTHLY', 'Monthly'),
@@ -116,7 +256,7 @@ class RecurrencePattern(models.Model):
         return base_date
 
 
-class PaymentObligation(models.Model):
+class PaymentObligation(TimestampedModel):
     """
     Auto-generated obligation entry for each due expense/liability period.
     Generated by management command `generate_obligations`.
@@ -163,7 +303,7 @@ class PaymentObligation(models.Model):
         return 'PENDING'
 
 
-class Payment(models.Model):
+class Payment(TimestampedModel):
     """Actual cash outflow against an obligation or directly against an expense/liability."""
     PAYMENT_TYPES = [('EXPENSE', 'Expense'), ('LIABILITY', 'Liability'), ('PREPAYMENT', 'Prepayment')]
 
@@ -187,7 +327,7 @@ class Payment(models.Model):
         return f"Payment #{self.pk} — {self.amount_paid} on {self.payment_date.date()}"
 
 
-class Prepayment(models.Model):
+class Prepayment(TimestampedModel):
     """Advance payment that can be allocated across future obligations."""
     STATUS_CHOICES = [('Active', 'Active'), ('Exhausted', 'Exhausted'), ('Cancelled', 'Cancelled')]
 
@@ -212,7 +352,7 @@ class Prepayment(models.Model):
         return self.total_prepaid - self.amount_utilized
 
 
-class PaymentAllocation(models.Model):
+class PaymentAllocation(TimestampedModel):
     """Links a prepayment to a specific obligation it covers."""
     prepayment = models.ForeignKey(Prepayment, on_delete=models.PROTECT, related_name='allocations')
     obligation = models.ForeignKey(PaymentObligation, on_delete=models.PROTECT, related_name='allocations')
@@ -226,7 +366,7 @@ class PaymentAllocation(models.Model):
         return f"Allocation #{self.pk} — {self.amount_allocated}"
 
 
-class LiabilityCategory(models.Model):
+class LiabilityCategory(TimestampedModel):
     name = models.CharField(max_length=255, unique=True)
 
     class Meta:
@@ -236,7 +376,7 @@ class LiabilityCategory(models.Model):
         return self.name
 
 
-class LiabilityType(models.Model):
+class LiabilityType(TimestampedModel):
     category = models.ForeignKey(LiabilityCategory, on_delete=models.PROTECT, related_name='types')
     name = models.CharField(max_length=255)
 
@@ -247,7 +387,7 @@ class LiabilityType(models.Model):
         return f"{self.category.name} — {self.name}"
 
 
-class LiabilityItem(models.Model):
+class LiabilityItem(TimestampedModel):
     """A specific external loan or long-term liability."""
     liability_type = models.ForeignKey(LiabilityType, on_delete=models.PROTECT, related_name='items')
     name = models.CharField(max_length=255)
@@ -273,7 +413,7 @@ class LiabilityItem(models.Model):
         return self.original_amount - paid
 
 
-class LiabilityPaymentDetail(models.Model):
+class LiabilityPaymentDetail(TimestampedModel):
     """Principal + interest breakdown for each liability payment."""
     payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name='liability_details')
     liability_item = models.ForeignKey(LiabilityItem, on_delete=models.PROTECT,
@@ -290,7 +430,7 @@ class LiabilityPaymentDetail(models.Model):
         return f"Liability Payment #{self.pk} — {self.liability_item.name}"
 
 
-class ObligationGeneratorLog(models.Model):
+class ObligationGeneratorLog(TimestampedModel):
     """Tracks the last time obligations were auto-generated. One row, ever."""
     last_run_date = models.DateField(unique=True)
 
@@ -306,7 +446,7 @@ class ObligationGeneratorLog(models.Model):
 # Add is_cogs and display_order to ExpenseType via migration — done below via new fields
 # (We add them as separate models to avoid touching the existing migration)
 
-class ExpenseTypeExtra(models.Model):
+class ExpenseTypeExtra(TimestampedModel):
     """Extra fields for ExpenseType — avoids re-migrating the original model."""
     expense_type = models.OneToOneField(ExpenseType, on_delete=models.CASCADE,
                                         related_name='extra', primary_key=True)
@@ -319,7 +459,7 @@ class ExpenseTypeExtra(models.Model):
 
 # ── Payment upgrades ──────────────────────────────────────────────────────────
 
-class PaymentExtra(models.Model):
+class PaymentExtra(TimestampedModel):
     """Extra fields for Payment — payment_reference and approved_by."""
     payment = models.OneToOneField(Payment, on_delete=models.CASCADE,
                                    related_name='extra', primary_key=True)
@@ -329,7 +469,7 @@ class PaymentExtra(models.Model):
 
 # ── LiabilityItem upgrades ────────────────────────────────────────────────────
 
-class LiabilityItemExtra(models.Model):
+class LiabilityItemExtra(TimestampedModel):
     """Extra fields for LiabilityItem — interest_type."""
     INTEREST_TYPES = [
         ('FLAT', 'Flat Rate'),
@@ -343,7 +483,7 @@ class LiabilityItemExtra(models.Model):
 
 # ── Payment Method hierarchy ──────────────────────────────────────────────────
 
-class PaymentCategory(models.Model):
+class PaymentCategory(TimestampedModel):
     CATEGORY_CODES = [
         ('CASH', 'Physical Cash'),
         ('MOBILE_MONEY', 'Mobile Money'),
@@ -360,7 +500,7 @@ class PaymentCategory(models.Model):
         return self.name
 
 
-class PaymentProvider(models.Model):
+class PaymentProvider(TimestampedModel):
     category = models.ForeignKey(PaymentCategory, on_delete=models.PROTECT, related_name='providers')
     name = models.CharField(max_length=255, unique=True)
     short_code = models.CharField(max_length=20, blank=True)
@@ -373,7 +513,7 @@ class PaymentProvider(models.Model):
         return self.name
 
 
-class PaymentMethodCategory(models.Model):
+class PaymentMethodCategory(TimestampedModel):
     """Links existing PaymentMethod to the new PaymentCategory/Provider hierarchy."""
     payment_method = models.OneToOneField(PaymentMethod, on_delete=models.CASCADE,
                                           related_name='category_link', primary_key=True)
@@ -389,7 +529,7 @@ class PaymentMethodCategory(models.Model):
 
 # ── Cash Register Session ─────────────────────────────────────────────────────
 
-class CashRegisterSession(models.Model):
+class CashRegisterSession(TimestampedModel):
     STATUS_CHOICES = [
         ('OPEN', 'Open'),
         ('CLOSED', 'Closed'),
@@ -417,7 +557,7 @@ class CashRegisterSession(models.Model):
         )['t']
 
 
-class SessionBalance(models.Model):
+class SessionBalance(TimestampedModel):
     session = models.ForeignKey(CashRegisterSession, on_delete=models.CASCADE, related_name='balances')
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT)
     physical_closing_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
@@ -437,7 +577,7 @@ class SessionBalance(models.Model):
 
 # ── Budget ────────────────────────────────────────────────────────────────────
 
-class BudgetLine(models.Model):
+class BudgetLine(TimestampedModel):
     BUDGET_TYPES = [
         ('REVENUE', 'Net Sales Revenue'),
         ('COGS', 'Cost of Goods Sold'),

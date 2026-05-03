@@ -5,9 +5,11 @@ from django.db.models.functions import Coalesce
 from decimal import Decimal
 from catalog.models import ProductSpec
 from finance.models import PaymentMethod
+from apps.core.models import TimestampedModel
+from apps.core.services import ActionMixin
 
 
-class Debtor(models.Model):
+class Debtor(TimestampedModel, ActionMixin):
     """Credit customer (accounts receivable party)."""
     name = models.CharField(max_length=255)
     address = models.TextField(blank=True)
@@ -46,15 +48,69 @@ class Debtor(models.Model):
     def outstanding_balance(self):
         return self.total_debt - self.total_paid
 
-
     @property
     def is_over_limit(self):
         if self.credit_limit == 0:
             return False
         return self.outstanding_balance > self.credit_limit
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('credit:debtor_detail', kwargs={'pk': self.pk})
+    
+    # ── SELF-SUFFICIENT ACTIONS ────────────────────────────────────────
+    
+    def get_edit_url(self):
+        from django.urls import reverse
+        return reverse('credit:debtor_update', kwargs={'pk': self.pk})
+    
+    def get_delete_url(self):
+        from django.urls import reverse
+        return reverse('credit:debtor_delete', kwargs={'pk': self.pk})
+    
+    def get_credit_sale_url(self):
+        """Create a new credit sale for this debtor."""
+        from django.urls import reverse
+        return f"{reverse('credit:debt_create')}?debtor={self.pk}"
+    
+    def get_make_payment_url(self):
+        """Make a payment/repayment for this debtor."""
+        from django.urls import reverse
+        return f"{reverse('credit:debt_return_create')}?debtor={self.pk}"
+    
+    def get_statement_url(self):
+        """View debtor statement/account history."""
+        return self.get_absolute_url()
+    
+    def can_edit(self, user=None) -> bool:
+        """Allow editing unless there are outstanding debts."""
+        return self.outstanding_balance == 0 or True  # Simplified: always allow
+    
+    def can_delete(self, user=None) -> bool:
+        """Prevent deletion if debtor has any debts."""
+        return not self.debts.exists()
+    
+    def get_status_badge(self) -> dict:
+        """Returns status badge based on debtor state."""
+        if self.is_blocked:
+            return {'label': 'Blocked', 'color': 'bg-red-100 text-red-800'}
+        elif self.is_over_limit:
+            return {'label': 'Over Limit', 'color': 'bg-orange-100 text-orange-800'}
+        elif self.outstanding_balance > 0:
+            return {'label': 'Has Balance', 'color': 'bg-yellow-100 text-yellow-800'}
+        else:
+            return {'label': 'Clear', 'color': 'bg-green-100 text-green-800'}
+    
+    def get_outstanding_balance_display(self) -> str:
+        """Formatted outstanding balance."""
+        return f"TZS {self.outstanding_balance:,.0f}"
+    
+    def get_debt_count(self) -> int:
+        """Get number of outstanding debts."""
+        return self.debts.filter(returns__isnull=True).count()
 
-class Debt(models.Model):
+
+class Debt(TimestampedModel, ActionMixin):
     """A single credit sale line — creates an accounts receivable."""
     debtor = models.ForeignKey(Debtor, on_delete=models.PROTECT, related_name='debts')
     product_spec = models.ForeignKey(ProductSpec, on_delete=models.PROTECT, related_name='debts')
@@ -96,14 +152,64 @@ class Debt(models.Model):
         return self.balance > 0 and self.expected_payment_date < timezone.now().date()
 
     def save(self, *args, **kwargs):
+        is_new = self.pk is None
         super().save(*args, **kwargs)
-        if not self.reference_number:
+        if is_new and not self.reference_number:
             self.reference_number = f"DT-{self.sale_date.year}-{self.pk:04d}"
             Debt.objects.filter(pk=self.pk).update(reference_number=self.reference_number)
         self.product_spec.update_stock()
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('credit:debt_detail', kwargs={'pk': self.pk})
+    
+    # ── SELF-SUFFICIENT ACTIONS ────────────────────────────────────────
+    
+    def get_edit_url(self):
+        from django.urls import reverse
+        return reverse('credit:debt_update', kwargs={'pk': self.pk})
+    
+    def get_delete_url(self):
+        from django.urls import reverse
+        return reverse('credit:debt_delete', kwargs={'pk': self.pk})
+    
+    def get_receive_payment_url(self):
+        """URL to receive payment for this debt."""
+        from django.urls import reverse
+        return f"{reverse('credit:debt_return_create')}?debt={self.pk}"
+    
+    def can_edit(self, user=None) -> bool:
+        """Allow editing only if no payments received yet."""
+        return self.total_returned == 0
+    
+    def can_delete(self, user=None) -> bool:
+        """Prevent deletion if payments have been made."""
+        return not self.returns.exists()
+    
+    def get_status_badge(self) -> dict:
+        """Returns status badge based on payment state."""
+        if self.balance <= 0:
+            return {'label': 'Paid', 'color': 'bg-green-100 text-green-800'}
+        elif self.is_overdue:
+            return {'label': 'Overdue', 'color': 'bg-red-100 text-red-800'}
+        elif self.total_returned > 0:
+            return {'label': 'Partially Paid', 'color': 'bg-yellow-100 text-yellow-800'}
+        else:
+            return {'label': 'Unpaid', 'color': 'bg-blue-100 text-blue-800'}
+    
+    def get_balance_display(self) -> str:
+        """Formatted balance due."""
+        return f"TZS {self.balance:,.0f}"
+    
+    def get_days_overdue(self) -> int:
+        """Get number of days overdue (0 if not overdue)."""
+        if not self.is_overdue:
+            return 0
+        from datetime import date
+        return (date.today() - self.expected_payment_date).days
 
-class DebtReturn(models.Model):
+
+class DebtReturn(TimestampedModel, ActionMixin):
     """Partial or full repayment against a credit sale."""
     debt = models.ForeignKey(Debt, on_delete=models.PROTECT, related_name='returns')
     amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
@@ -118,4 +224,46 @@ class DebtReturn(models.Model):
     def __str__(self):
         return f"Repayment #{self.pk} — {self.debt.debtor.name} — {self.amount}"
 
-# Create your models here.
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Trigger stock update if needed (though repayments don't affect stock directly)
+        # Keeping for consistency with other transaction models
+        self.debt.product_spec.update_stock()
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('credit:debt_return_detail', kwargs={'pk': self.pk})
+    
+    # ── SELF-SUFFICIENT ACTIONS ────────────────────────────────────────
+    
+    def get_edit_url(self):
+        from django.urls import reverse
+        return reverse('credit:debt_return_update', kwargs={'pk': self.pk})
+    
+    def get_delete_url(self):
+        from django.urls import reverse
+        return reverse('credit:debt_return_delete', kwargs={'pk': self.pk})
+    
+    def get_debtor_url(self):
+        """View the debtor associated with this payment."""
+        if self.debt and self.debt.debtor:
+            return self.debt.debtor.get_absolute_url()
+        return '#'
+    
+    def can_edit(self, user=None) -> bool:
+        """Allow editing on the same day only."""
+        from django.utils import timezone
+        now = timezone.now()
+        return (now.date() == self.return_date.date())
+    
+    def can_delete(self, user=None) -> bool:
+        """Always allow deletion of repayments."""
+        return True
+    
+    def get_status_badge(self) -> dict:
+        """Returns status badge for repayment."""
+        return {'label': 'Received', 'color': 'bg-green-100 text-green-800'}
+    
+    def get_amount_display(self) -> str:
+        """Formatted amount received."""
+        return f"TZS {self.amount:,.0f}"

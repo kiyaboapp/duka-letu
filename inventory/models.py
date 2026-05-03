@@ -1,9 +1,11 @@
 from django.db import models
 from django.utils import timezone
 from catalog.models import ProductSpec
+from apps.core.models import TimestampedModel
+from apps.core.services import ActionMixin
 
 
-class Supplier(models.Model):
+class Supplier(TimestampedModel, ActionMixin):
     name = models.CharField(max_length=255)
     contact_person = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=50, blank=True)
@@ -15,8 +17,56 @@ class Supplier(models.Model):
     def __str__(self):
         return self.name
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('inventory:supplier_detail', kwargs={'pk': self.pk})
 
-class Purchase(models.Model):
+    # ── SELF-SUFFICIENT ACTIONS ────────────────────────────────────────
+    
+    def get_edit_url(self):
+        from django.urls import reverse
+        return reverse('inventory:supplier_update', kwargs={'pk': self.pk})
+    
+    def get_delete_url(self):
+        from django.urls import reverse
+        return reverse('inventory:supplier_delete', kwargs={'pk': self.pk})
+    
+    def get_purchase_url(self):
+        """Create a new purchase order for this supplier."""
+        from django.urls import reverse
+        return f"{reverse('inventory:purchase_create')}?supplier={self.pk}"
+    
+    def get_contacts_url(self):
+        """View contact details modal."""
+        return self.get_absolute_url()
+    
+    # Override ActionMixin methods for Supplier-specific logic
+    def can_delete(self, user=None) -> bool:
+        """Prevent deletion if supplier has purchases."""
+        return not self.purchases.exists()
+    
+    def get_status_badge(self) -> dict:
+        """Returns status badge based on activity."""
+        purchase_count = self.purchases.count()
+        if purchase_count > 10:
+            return {'label': 'Active Supplier', 'color': 'bg-green-100 text-green-800'}
+        elif purchase_count > 0:
+            return {'label': 'Occasional Supplier', 'color': 'bg-yellow-100 text-yellow-800'}
+        else:
+            return {'label': 'New Supplier', 'color': 'bg-gray-100 text-gray-800'}
+    
+    def get_total_purchased_amount(self) -> float:
+        """Calculate total amount purchased from this supplier."""
+        total = sum(p.total_amount for p in self.purchases.all())
+        return float(total)
+    
+    def get_last_purchase_date(self):
+        """Get date of last purchase."""
+        last = self.purchases.order_by('-purchase_date').first()
+        return last.purchase_date if last else None
+
+
+class Purchase(TimestampedModel, ActionMixin):
     supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name='purchases')
     purchase_date = models.DateTimeField(default=timezone.now)
     invoice_number = models.CharField(max_length=255, blank=True)
@@ -38,8 +88,77 @@ class Purchase(models.Model):
     def period_label(self):
         return self.purchase_date.strftime('%B %Y')
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('inventory:purchase_detail', kwargs={'pk': self.pk})
 
-class PurchaseDetail(models.Model):
+    # ── SELF-SUFFICIENT ACTIONS ────────────────────────────────────────
+    
+    def get_edit_url(self):
+        from django.urls import reverse
+        return reverse('inventory:purchase_update', kwargs={'pk': self.pk})
+    
+    def get_delete_url(self):
+        from django.urls import reverse
+        return reverse('inventory:purchase_delete', kwargs={'pk': self.pk})
+    
+    def get_add_items_url(self):
+        """Add more items to this purchase."""
+        from django.urls import reverse
+        return f"{reverse('inventory:purchase_detail', kwargs={'pk': self.pk})}#add-items"
+    
+    def get_return_items_url(self):
+        """Return items to supplier."""
+        from django.urls import reverse
+        return f"{reverse('inventory:return_outward_create')}?purchase={self.pk}"
+    
+    def get_duplicate_url(self):
+        """Create similar purchase from same supplier."""
+        from django.urls import reverse
+        return f"{reverse('inventory:purchase_create')}?supplier={self.supplier_id}"
+    
+    def can_add_items(self):
+        """Check if we can still add items (purchase not finalized)."""
+        # In future: add 'is_finalized' field to Purchase model
+        return True
+    
+    def can_return_items(self):
+        """Check if items can be returned."""
+        return self.details.exists()
+    
+    # Override ActionMixin methods for Purchase-specific logic
+    def can_edit(self, user=None) -> bool:
+        """Allow editing only on the same day (simplified)."""
+        from django.utils import timezone
+        now = timezone.now()
+        return (now.date() == self.purchase_date.date())
+    
+    def can_delete(self, user=None) -> bool:
+        """Prevent deletion if there are return outwards."""
+        from inventory.models import ReturnOutward
+        return not ReturnOutward.objects.filter(purchase_detail__purchase=self).exists()
+    
+    def can_duplicate(self) -> bool:
+        """Always allow duplicating purchases."""
+        return True
+    
+    def get_status_badge(self) -> dict:
+        """Returns status badge based on purchase state."""
+        if self.carriage_inwards > 0:
+            return {'label': 'Complete', 'color': 'bg-green-100 text-green-800'}
+        else:
+            return {'label': 'Pending Freight', 'color': 'bg-yellow-100 text-yellow-800'}
+    
+    def get_item_count(self) -> int:
+        """Get number of line items in this purchase."""
+        return self.details.count()
+    
+    def get_total_cost_with_freight(self) -> float:
+        """Calculate total amount including carriage inwards."""
+        return float(self.total_amount + self.carriage_inwards)
+
+
+class PurchaseDetail(TimestampedModel):
     purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='details')
     product_spec = models.ForeignKey(ProductSpec, on_delete=models.PROTECT, related_name='purchase_details')
     quantity = models.PositiveIntegerField()
@@ -66,7 +185,7 @@ class PurchaseDetail(models.Model):
         spec.update_stock()
 
 
-class ReturnOutward(models.Model):
+class ReturnOutward(TimestampedModel):
     """Purchase return — goods sent back to supplier."""
     purchase_detail = models.ForeignKey(PurchaseDetail, on_delete=models.PROTECT, related_name='returns')
     quantity = models.PositiveIntegerField(default=1)
@@ -88,4 +207,23 @@ class ReturnOutward(models.Model):
         super().save(*args, **kwargs)
         self.purchase_detail.product_spec.update_stock()
 
-# Create your models here.
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('inventory:return_outward_detail', kwargs={'pk': self.pk})
+
+    # ── SELF-SUFFICIENT ACTIONS ────────────────────────────────────────
+    
+    def get_edit_url(self):
+        from django.urls import reverse
+        return reverse('inventory:return_outward_update', kwargs={'pk': self.pk})
+    
+    def get_delete_url(self):
+        from django.urls import reverse
+        return reverse('inventory:return_outward_delete', kwargs={'pk': self.pk})
+    
+    def get_purchase_url(self):
+        """View the original purchase."""
+        if self.purchase_detail and self.purchase_detail.purchase:
+            from django.urls import reverse
+            return reverse('inventory:purchase_detail', kwargs={'pk': self.purchase_detail.purchase.pk})
+        return '#'
