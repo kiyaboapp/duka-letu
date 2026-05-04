@@ -20,7 +20,7 @@ class BalanceSheetService:
     def accumulated_depreciation_total(self) -> Decimal:
         from assets.models import Asset
         return sum(
-            a.accumulated_depreciation
+            a.get_accumulated_depreciation(self.as_of)
             for a in Asset.objects.filter(acquisition_date__lte=self.as_of, disposal_date__isnull=True)
         )
 
@@ -30,29 +30,35 @@ class BalanceSheetService:
     # ── Current assets ───────────────────────────────────────────────────────
 
     def inventory_value(self) -> Decimal:
-        from catalog.models import ProductSpec
-        return ProductSpec.objects.aggregate(
-            t=Coalesce(Sum('cached_stock_value'), Decimal('0'), output_field=_DEC)
-        )['t']
+        from reports.services.accounting import AccountingService
+        from datetime import date
+        # Point-in-time valuation using the fixed per-spec logic
+        svc = AccountingService(date(2000, 1, 1), self.as_of)
+        return svc.closing_stock_value()
+
+    def _get_debt_balance_as_of(self, debt) -> Decimal:
+        """Calculates debt balance specifically as of self.as_of."""
+        from credit.models import DebtReturn
+        from django.db.models import Sum
+        debt_total = (debt.quantity * debt.unit_price) - debt.discount
+        repaid_as_of = DebtReturn.objects.filter(
+            debt=debt,
+            return_date__date__lte=self.as_of
+        ).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        return max(debt_total - repaid_as_of, Decimal('0'))
 
     def gross_receivables(self) -> Decimal:
-        from credit.models import Debt, DebtReturn
-        debt_expr = ExpressionWrapper(
-            F('quantity') * F('unit_price') - F('discount'), output_field=_DEC
-        )
-        total_debts = Debt.objects.filter(
-            sale_date__date__lte=self.as_of
-        ).aggregate(t=Coalesce(Sum(debt_expr), Decimal('0'), output_field=_DEC))['t']
-        total_repaid = DebtReturn.objects.filter(
-            return_date__date__lte=self.as_of
-        ).aggregate(t=Coalesce(Sum('amount'), Decimal('0'), output_field=_DEC))['t']
-        return max(total_debts - total_repaid, Decimal('0'))
+        from credit.models import Debt
+        total = Decimal('0')
+        for debt in Debt.objects.filter(sale_date__date__lte=self.as_of):
+            total += self._get_debt_balance_as_of(debt)
+        return total
 
     def bad_debt_provision(self) -> Decimal:
         from credit.models import Debt
         provision = Decimal('0')
-        for debt in Debt.objects.filter(sale_date__date__lte=self.as_of).select_related():
-            balance = debt.balance
+        for debt in Debt.objects.filter(sale_date__date__lte=self.as_of):
+            balance = self._get_debt_balance_as_of(debt)
             if balance <= 0 or not debt.expected_payment_date:
                 continue
             days = (self.as_of - debt.expected_payment_date).days
@@ -89,22 +95,44 @@ class BalanceSheetService:
 
     # ── Liabilities ──────────────────────────────────────────────────────────
 
+    def _get_liability_balance_as_of(self, item) -> Decimal:
+        """Calculates liability balance specifically as of self.as_of."""
+        from finance.models import LiabilityPaymentDetail
+        from django.db.models import Sum
+        paid_as_of = LiabilityPaymentDetail.objects.filter(
+            liability_item=item,
+            payment_date__date__lte=self.as_of
+        ).aggregate(t=Sum('principal_amount'))['t'] or Decimal('0')
+        return max(item.original_amount - paid_as_of, Decimal('0'))
+
     def long_term_liabilities(self) -> Decimal:
         from finance.models import LiabilityItem
-        return sum(
-            item.current_balance
-            for item in LiabilityItem.objects.filter(is_active=True)
-            if item.maturity_date and item.maturity_date > self.as_of
-        )
+        total = Decimal('0')
+        for item in LiabilityItem.objects.filter(start_date__lte=self.as_of):
+            # Only include if it was active and not fully matured/paid by this date
+            # Actually, we should include all that had a balance on this date.
+            balance = self._get_liability_balance_as_of(item)
+            if balance > 0:
+                # If maturity_date exists and is in the future, it's long-term
+                if not item.maturity_date or item.maturity_date > self.as_of:
+                    total += balance
+        return total
+
+    def _get_obligation_balance_as_of(self, obligation) -> Decimal:
+        """Calculates obligation balance specifically as of self.as_of."""
+        from finance.models import Payment
+        from django.db.models import Sum
+        paid_as_of = Payment.objects.filter(
+            obligation=obligation,
+            payment_date__date__lte=self.as_of
+        ).aggregate(t=Sum('amount_paid'))['t'] or Decimal('0')
+        return max(obligation.amount_due - obligation.prepayment_applied - paid_as_of, Decimal('0'))
 
     def current_liabilities(self) -> Decimal:
         from finance.models import PaymentObligation
-        # balance = amount_due - prepayment_applied - amount_paid (all real DB columns)
         result = Decimal('0')
         for o in PaymentObligation.objects.filter(due_date__lte=self.as_of):
-            b = o.amount_due - o.prepayment_applied - o.amount_paid
-            if b > 0:
-                result += b
+            result += self._get_obligation_balance_as_of(o)
         return result
 
     def total_liabilities(self) -> Decimal:

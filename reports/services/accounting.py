@@ -169,12 +169,20 @@ class AccountingService:
 
     def opening_stock_value(self) -> Decimal:
         """Opening stock = units in stock at start of period × WAC as of period start."""
-        from datetime import timedelta
-        prior_end = self.start - timedelta(days=1)
-        prior_svc = AccountingService(date(2000, 1, 1), prior_end, self.spec_id)
-        opening_qty = prior_svc._closing_stock_qty()
-        wac = prior_svc.weighted_average_cost()
-        return opening_qty * wac
+        if self.spec_id:
+            from datetime import timedelta
+            prior_end = self.start - timedelta(days=1)
+            prior_svc = AccountingService(date(2000, 1, 1), prior_end, self.spec_id)
+            opening_qty = prior_svc._closing_stock_qty()
+            wac = prior_svc.weighted_average_cost()
+            return opening_qty * wac
+        else:
+            from inventory.models import ProductSpec
+            total = Decimal('0')
+            # Aggregate per-spec to avoid "Aggregate WAC" bug
+            for spec_id in ProductSpec.objects.values_list('id', flat=True):
+                total += AccountingService(self.start, self.end, spec_id).opening_stock_value()
+            return total
 
     def _closing_stock_qty(self) -> Decimal:
         return (
@@ -189,15 +197,34 @@ class AccountingService:
 
     def closing_stock_qty(self) -> Decimal:
         """Closing stock = opening qty + period inflows - period outflows."""
-        from datetime import timedelta
-        prior_end = self.start - timedelta(days=1)
-        prior_svc = AccountingService(date(2000, 1, 1), prior_end, self.spec_id)
-        opening_qty = prior_svc._closing_stock_qty()
-        period_delta = self._closing_stock_qty()
-        return max(Decimal('0'), opening_qty + period_delta)
+        if self.spec_id:
+            from datetime import timedelta
+            prior_end = self.start - timedelta(days=1)
+            prior_svc = AccountingService(date(2000, 1, 1), prior_end, self.spec_id)
+            opening_qty = prior_svc._closing_stock_qty()
+            period_delta = self._closing_stock_qty()
+            return max(Decimal('0'), opening_qty + period_delta)
+        else:
+            from inventory.models import ProductSpec
+            total = Decimal('0')
+            for spec_id in ProductSpec.objects.values_list('id', flat=True):
+                total += AccountingService(self.start, self.end, spec_id).closing_stock_qty()
+            return total
 
     def closing_stock_value(self) -> Decimal:
-        return self.closing_stock_qty() * self.weighted_average_cost()
+        if self.spec_id:
+            return self.closing_stock_qty() * self.weighted_average_cost()
+        # Single aggregated query — no per-spec loop
+        from catalog.models import ProductSpec
+        from django.db.models import Sum, F, ExpressionWrapper
+        total = ProductSpec.objects.aggregate(
+            val=Coalesce(
+                Sum(ExpressionWrapper(F('current_stock') * F('cached_wac'), output_field=_DEC)),
+                Decimal('0'),
+                output_field=_DEC,
+            )
+        )['val']
+        return total
 
     def cogs(self) -> Decimal:
         """COGS = Opening Stock + Net Purchases - Closing Stock"""
@@ -207,15 +234,11 @@ class AccountingService:
         return self.net_sales() - self.cogs()
 
     def operating_expenses(self) -> dict:
-        """
-        Returns expenses paid in the period, grouped by ExpenseType name.
-        Uses actual Payment records (cash out) not obligations.
-        Also includes office use cost as an operating expense line.
-        """
-        from finance.models import Payment
+        from finance.models import Payment, PaymentAllocation
         from django.db.models import Sum
         from collections import defaultdict
 
+        # Direct payments
         payments = (
             Payment.objects
             .filter(
@@ -227,13 +250,32 @@ class AccountingService:
             .annotate(total=Sum('amount_paid'))
             .order_by('expense_item__expense_type__name')
         )
-
         lines = {row['expense_item__expense_type__name']: row['total'] for row in payments}
 
-        # Office use cost (internal consumption) — always shown
-        from sales.models import SaleOfficeUse
-        office_qs = SaleOfficeUse.objects.filter(sale_date__date__range=(self.start, self.end))
-        office_cost = self._sum_expr(office_qs, _sale_amount_expr())
+        # Prepayment allocations (rent paid in advance shows here)
+        allocations = (
+            PaymentAllocation.objects
+            .filter(
+                allocation_date__date__range=(self.start, self.end),
+                obligation__expense_item__isnull=False,
+            )
+            .values('obligation__expense_item__expense_type__name')
+            .annotate(total=Sum('amount_allocated'))
+        )
+        for row in allocations:
+            key = row['obligation__expense_item__expense_type__name']
+            lines[key] = lines.get(key, Decimal('0')) + row['total']
+
+        # Office use cost valued at WAC
+        office_cost = Decimal('0')
+        if self.spec_id:
+            office_cost = self.office_use_qty() * self.weighted_average_cost()
+        else:
+            from catalog.models import ProductSpec
+            for spec_id in ProductSpec.objects.values_list('id', flat=True):
+                spec_svc = AccountingService(self.start, self.end, spec_id)
+                office_cost += spec_svc.office_use_qty() * spec_svc.weighted_average_cost()
+
         if office_cost:
             lines['Office Use / Customer Care'] = lines.get('Office Use / Customer Care', Decimal('0')) + office_cost
 

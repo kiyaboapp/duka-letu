@@ -144,8 +144,14 @@ class ExpenseItem(TimestampedModel):
         if not self.is_active:
             return {'class': 'bg-gray-100 text-gray-800', 'text': 'Inactive'}
         today = timezone.now().date()
-        overdue = self.obligations.filter(due_date__lt=today, amount_paid__lt=models.F('amount_due')).exists()
-        pending = self.obligations.filter(due_date__gte=today, amount_paid__lt=models.F('amount_due')).exists()
+        overdue = self.obligations.filter(
+            due_date__lt=today,
+            status='OVERDUE',
+        ).exists()
+        pending = self.obligations.filter(
+            due_date__gte=today,
+            status__in=['PENDING', 'PARTIAL'],
+        ).exists()
         if overdue:
             return {'class': 'bg-red-100 text-red-800', 'text': 'Overdue'}
         elif pending:
@@ -155,10 +161,17 @@ class ExpenseItem(TimestampedModel):
 
     def get_next_due_date(self):
         today = timezone.now().date()
+        # First try from existing obligations
         next_due = self.obligations.filter(
-            due_date__gte=today, amount_paid__lt=models.F('amount_due')
+            due_date__gte=today, status__in=['PENDING', 'PARTIAL']
         ).order_by('due_date').first()
-        return next_due.due_date if next_due else None
+        if next_due:
+            return next_due.due_date
+        # Fall back to computing from recurrence pattern
+        pattern = self.recurrences.filter(is_active=True).first()
+        if pattern:
+            return pattern.calculate_due_date(today)
+        return None
 
     def get_total_paid_this_month(self):
         """Calculate total payments for this item in current month."""
@@ -231,22 +244,23 @@ class RecurrencePattern(TimestampedModel):
     def calculate_due_date(self, base_date):
         """
         Mirrors VBA CalculateDueDate() from modPayables.
-        Supports last-day and negative offset conventions.
+        dom=0 or dom=-1 → last day of month.
+        dom<=-2 → offset from last day.
         """
         import calendar
 
-        if self.recurrence_type == 'MONTHLY':
+        if self.recurrence_type.upper() == 'MONTHLY':
             last_day = calendar.monthrange(base_date.year, base_date.month)[1]
             dom = self.specific_day_of_month
-            if dom is None or dom == 0:
+            if dom is None or dom == 0 or dom == -1:
                 return base_date.replace(day=last_day)
-            elif dom < 0:
+            elif dom <= -2:
                 from datetime import timedelta
-                return base_date.replace(day=last_day) + timedelta(days=dom)
+                return base_date.replace(day=last_day) + timedelta(days=dom + 1)
             else:
                 return base_date.replace(day=min(dom, last_day))
 
-        elif self.recurrence_type == 'WEEKLY':
+        elif self.recurrence_type.upper() == 'WEEKLY':
             from datetime import timedelta
             dow = self.specific_day_of_week or 1
             days_to_end_of_week = (7 - base_date.weekday()) % 7 or 7
@@ -256,6 +270,37 @@ class RecurrencePattern(TimestampedModel):
             return week_end
 
         return base_date
+
+    def save(self, *args, **kwargs):
+        from datetime import date
+        was_active = False
+        if self.pk:
+            try:
+                old = RecurrencePattern.objects.get(pk=self.pk)
+                was_active = old.is_active
+            except RecurrencePattern.DoesNotExist:
+                pass
+        super().save(*args, **kwargs)
+        today = date.today()
+        if self.is_active:
+            # Generate obligations immediately for this pattern
+            from finance.services import _generate_for_pattern
+            import calendar
+            end_month = today.month + 1
+            end_year = today.year + (end_month - 1) // 12
+            end_month = ((end_month - 1) % 12) + 1
+            last_day = calendar.monthrange(end_year, end_month)[1]
+            from datetime import date as d
+            to_date = d(end_year, end_month, last_day)
+            _generate_for_pattern(self, today, to_date)
+        elif was_active and not self.is_active:
+            # Deactivated — cancel future unpaid obligations
+            PaymentObligation.objects.filter(
+                expense_item=self.expense_item,
+                due_date__gt=today,
+                amount_paid=0,
+                prepayment_applied=0,
+            ).delete()
 
 
 class PaymentObligation(TimestampedModel):
@@ -282,10 +327,12 @@ class PaymentObligation(TimestampedModel):
     amount_due = models.DecimalField(max_digits=15, decimal_places=2)
     prepayment_applied = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     amount_paid = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     description = models.TextField(blank=True)
 
     class Meta:
         ordering = ['due_date']
+        unique_together = [['expense_item', 'due_date', 'obligation_type']]
 
     def __str__(self):
         return f"Obligation #{self.pk} — {self.due_date} — {self.amount_due}"
@@ -303,6 +350,10 @@ class PaymentObligation(TimestampedModel):
         elif self.due_date < timezone.now().date():
             return 'OVERDUE'
         return 'PENDING'
+
+    def save(self, *args, **kwargs):
+        self.status = self.payment_status
+        super().save(*args, **kwargs)
 
 
 class Payment(TimestampedModel):
@@ -366,6 +417,28 @@ class PaymentAllocation(TimestampedModel):
 
     def __str__(self):
         return f"Allocation #{self.pk} — {self.amount_allocated}"
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new:
+            self.obligation.prepayment_applied = (self.obligation.prepayment_applied or Decimal('0')) + self.amount_allocated
+            self.obligation.save(update_fields=['prepayment_applied', 'status'])
+            self.prepayment.amount_utilized = (self.prepayment.amount_utilized or Decimal('0')) + self.amount_allocated
+            if self.prepayment.amount_utilized >= self.prepayment.total_prepaid:
+                self.prepayment.status = 'Exhausted'
+            self.prepayment.save(update_fields=['amount_utilized', 'status'])
+
+    def delete(self, *args, **kwargs):
+        obligation = self.obligation
+        prepayment = self.prepayment
+        amount = self.amount_allocated
+        super().delete(*args, **kwargs)
+        obligation.prepayment_applied = max(Decimal('0'), obligation.prepayment_applied - amount)
+        obligation.save(update_fields=['prepayment_applied', 'status'])
+        prepayment.amount_utilized = max(Decimal('0'), prepayment.amount_utilized - amount)
+        prepayment.status = 'Active' if prepayment.amount_utilized < prepayment.total_prepaid else 'Exhausted'
+        prepayment.save(update_fields=['amount_utilized', 'status'])
 
 
 class LiabilityCategory(TimestampedModel):
@@ -433,7 +506,7 @@ class LiabilityPaymentDetail(TimestampedModel):
 
 
 class ObligationGeneratorLog(TimestampedModel):
-    """Tracks the last time obligations were auto-generated. One row, ever."""
+    """Kept for historical data only. No longer used as a generation gate."""
     last_run_date = models.DateField(unique=True)
 
     class Meta:
@@ -552,8 +625,8 @@ class CashRegisterSession(TimestampedModel):
 
     def closing_balance_for(self, category_code: str) -> Decimal:
         return self.balances.filter(
-            payment_method_link__category__code=category_code,
-            payment_method_link__clears_immediately=True
+            payment_method__category_link__category__code=category_code,
+            payment_method__category_link__clears_immediately=True
         ).aggregate(
             t=Coalesce(Sum('physical_closing_balance'), Decimal('0'))
         )['t']

@@ -6,9 +6,12 @@ from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from .models import (
     PaymentObligation, Payment, ExpenseItem, ExpenseRate,
-    LiabilityItem, LiabilityPaymentDetail, PaymentMethod,
+    LiabilityItem, LiabilityPaymentDetail, PaymentMethod, RecurrencePattern,
 )
-from .forms import ExpenseItemForm, ExpenseRateForm, PaymentForm, LiabilityPaymentForm
+from .forms import (
+    ExpenseItemForm, ExpenseRateForm, PaymentForm, LiabilityPaymentForm,
+    RecurrencePatternForm, RecurringExpenseForm, AdhocExpenseForm,
+)
 from .services import auto_generate_obligations
 
 
@@ -17,25 +20,55 @@ def index(request):
     today = timezone.now().date()
     month_start = today.replace(day=1)
 
-    obligations = PaymentObligation.objects.select_related(
+    base_qs = PaymentObligation.objects.select_related(
         'expense_item__expense_type', 'liability_item'
-    ).order_by('due_date')
+    )
 
-    overdue = [o for o in obligations if o.payment_status == 'OVERDUE']
-    due_this_month = [o for o in obligations if o.payment_status in ('PENDING', 'PARTIAL') and o.due_date >= today and o.due_date.month == today.month and o.due_date.year == today.year]
-    upcoming = [o for o in obligations if o.payment_status in ('PENDING', 'PARTIAL') and o.due_date > today and not (o.due_date.month == today.month and o.due_date.year == today.year)]
+    overdue = list(base_qs.filter(status='OVERDUE', due_date__gte='2026-01-01').order_by('due_date'))
+    overdue_historical = list(base_qs.filter(status='OVERDUE', due_date__lt='2026-01-01').order_by('due_date'))
+    due_this_month = list(base_qs.filter(
+        status__in=['PENDING', 'PARTIAL'],
+        due_date__gte=today,
+        due_date__year=today.year,
+        due_date__month=today.month,
+    ).order_by('due_date'))
+    upcoming = list(base_qs.filter(
+        status__in=['PENDING', 'PARTIAL'],
+        due_date__gt=today,
+    ).exclude(due_date__year=today.year, due_date__month=today.month).order_by('due_date'))
 
     paid_this_month = Payment.objects.filter(
         payment_date__date__gte=month_start,
         payment_type='EXPENSE',
     ).aggregate(total=Coalesce(Sum('amount_paid'), Decimal('0')))['total']
 
+    from .models import Prepayment
+    from django.db.models import F as _F
+    unallocated_prepayments = Prepayment.objects.filter(
+        status='Active', amount_utilized__lt=_F('total_prepaid')
+    )
+
+    from .models import ObligationGeneratorLog
+    try:
+        last_generated = ObligationGeneratorLog.objects.latest('last_run_date').last_run_date
+    except ObligationGeneratorLog.DoesNotExist:
+        last_generated = None
+
     return render(request, 'finance/index.html', {
         'overdue': overdue,
+        'overdue_historical': overdue_historical,
         'due_this_month': due_this_month,
         'upcoming': upcoming,
         'paid_this_month': paid_this_month,
+        'unallocated_prepayments': unallocated_prepayments,
+        'last_generated': last_generated,
     })
+
+
+def generate_now(request):
+    if request.method == 'POST':
+        auto_generate_obligations()
+    return redirect('finance:index')
 
 
 # ── Expense Items ─────────────────────────────────────────────────────────────
@@ -78,10 +111,16 @@ def expense_detail(request, pk):
     ), pk=pk)
     today = timezone.now().date()
     obligations = item.obligations.order_by('due_date')
-    overdue = [o for o in obligations if o.payment_status == 'OVERDUE']
-    pending = [o for o in obligations if o.payment_status in ('PENDING', 'PARTIAL')]
-    paid = [o for o in obligations if o.payment_status == 'PAID']
+    overdue = [o for o in obligations if o.status == 'OVERDUE']
+    pending = [o for o in obligations if o.status in ('PENDING', 'PARTIAL')]
+    paid = [o for o in obligations if o.status == 'PAID']
     latest_unpaid = next((o for o in obligations.order_by('due_date') if o.balance > 0), None)
+    setup_recurrence = (
+        request.GET.get('setup_recurrence') == '1'
+        and not item.recurrences.filter(is_active=True).exists()
+        and item.end_date is None  # only for ongoing expenses
+    )
+    form = RecurrencePatternForm(initial={'start_date': item.start_date}) if setup_recurrence else None
     return render(request, 'finance/expense_detail.html', {
         'item': item,
         'overdue': overdue,
@@ -89,19 +128,30 @@ def expense_detail(request, pk):
         'paid': paid,
         'latest_unpaid': latest_unpaid,
         'payments': item.payments.order_by('-payment_date')[:20],
+        'setup_recurrence': setup_recurrence,
+        'form': form,
     })
 
 
 def expense_create(request):
-    form = ExpenseItemForm(request.POST or None)
-    rate_form = ExpenseRateForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid() and rate_form.is_valid():
+    """Two-path entry: choose recurring or one-off."""
+    return render(request, 'finance/expense_create_choose.html')
+
+
+def expense_create_recurring(request):
+    form = RecurringExpenseForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
         item = form.save()
-        rate = rate_form.save(commit=False)
-        rate.expense_item = item
-        rate.save()
         return redirect('finance:expense_detail', pk=item.pk)
-    return render(request, 'finance/expense_form.html', {'form': form, 'rate_form': rate_form})
+    return render(request, 'finance/expense_create_recurring.html', {'form': form})
+
+
+def expense_create_adhoc(request):
+    form = AdhocExpenseForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('finance:index')
+    return render(request, 'finance/expense_create_adhoc.html', {'form': form})
 
 
 def expense_update(request, pk):
@@ -148,17 +198,23 @@ def obligation_pay(request, pk):
     ), pk=pk)
     is_htmx = request.headers.get('HX-Request')
 
+    if obligation.balance <= 0:
+        if is_htmx:
+            return render(request, 'finance/_obligation_row.html', {'o': obligation})
+        return redirect('finance:index')
+
     if request.method == 'POST':
         form = PaymentForm(request.POST)
         if form.is_valid():
             payment = form.save(commit=False)
+            payment.amount_paid = min(payment.amount_paid, obligation.balance)
             payment.obligation = obligation
             payment.payment_type = 'EXPENSE' if obligation.obligation_type == 'EXPENSE' else 'LIABILITY'
             payment.expense_item = obligation.expense_item
             payment.liability_item = obligation.liability_item
             payment.save()
             obligation.amount_paid = (obligation.amount_paid or Decimal('0')) + payment.amount_paid
-            obligation.save(update_fields=['amount_paid'])
+            obligation.save(update_fields=['amount_paid', 'status'])
             if is_htmx:
                 return render(request, 'finance/_obligation_row.html', {'o': obligation})
             return redirect('finance:index')
@@ -205,3 +261,82 @@ def liability_pay(request, pk):
 
     template = 'finance/_liability_pay_form.html' if is_htmx else 'finance/liability_payment_form.html'
     return render(request, template, {'form': form, 'liability': liability})
+
+
+def expense_direct_pay(request, pk):
+    """Record a direct payment for a one-off expense that has no obligation."""
+    item = get_object_or_404(ExpenseItem, pk=pk)
+    from .forms import AdhocPayForm
+    form = AdhocPayForm(request.POST or None, initial={
+        'amount': item.current_rate(),
+        'payment_date': timezone.now().date(),
+    })
+    if request.method == 'POST' and form.is_valid():
+        Payment.objects.create(
+            expense_item=item,
+            payment_type='EXPENSE',
+            amount_paid=form.cleaned_data['amount'],
+            payment_method=form.cleaned_data['payment_method'],
+            payment_date=form.cleaned_data['payment_date'],
+        )
+        return redirect('finance:expense_detail', pk=pk)
+    return render(request, 'finance/expense_direct_pay.html', {'item': item, 'form': form})
+
+def recurrence_create(request, pk):
+    item = get_object_or_404(ExpenseItem, pk=pk)
+    form = RecurrencePatternForm(request.POST or None, initial={'start_date': item.start_date})
+    if request.method == 'POST' and form.is_valid():
+        pattern = form.save(commit=False)
+        pattern.expense_item = item
+        pattern.save()  # triggers immediate generation
+        # Pay now if requested
+        if form.cleaned_data.get('pay_now') and form.cleaned_data.get('payment_method'):
+            obligation = PaymentObligation.objects.filter(
+                expense_item=item, status__in=['PENDING', 'OVERDUE']
+            ).order_by('due_date').first()
+            if obligation:
+                from .models import Payment
+                Payment.objects.create(
+                    obligation=obligation,
+                    expense_item=item,
+                    payment_type='EXPENSE',
+                    amount_paid=obligation.balance,
+                    payment_method=form.cleaned_data['payment_method'],
+                )
+                obligation.amount_paid = obligation.amount_due
+                obligation.save(update_fields=['amount_paid', 'status'])
+        if request.headers.get('HX-Request'):
+            item.refresh_from_db()
+            return render(request, 'finance/_recurrence_panel.html', {'item': item})
+        return redirect('finance:expense_detail', pk=pk)
+    if request.headers.get('HX-Request'):
+        return render(request, 'finance/_recurrence_form.html', {'form': form, 'item': item})
+    return render(request, 'finance/recurrence_form.html', {'form': form, 'item': item})
+
+
+def recurrence_update(request, pk):
+    pattern = get_object_or_404(RecurrencePattern, pk=pk)
+    form = RecurrencePatternForm(request.POST or None, instance=pattern)
+    if request.method == 'POST' and form.is_valid():
+        form.save()  # triggers immediate generation via RecurrencePattern.save()
+        if request.headers.get('HX-Request'):
+            pattern.expense_item.refresh_from_db()
+            return render(request, 'finance/_recurrence_panel.html', {'item': pattern.expense_item})
+        return redirect('finance:expense_detail', pk=pattern.expense_item.pk)
+    if request.headers.get('HX-Request'):
+        return render(request, 'finance/_recurrence_form.html', {'form': form, 'item': pattern.expense_item})
+    return render(request, 'finance/recurrence_form.html', {'form': form, 'item': pattern.expense_item})
+
+
+def recurrence_delete(request, pk):
+    pattern = get_object_or_404(RecurrencePattern, pk=pk)
+    expense_pk = pattern.expense_item.pk
+    if request.method == 'POST':
+        # Deactivate instead of delete to preserve history
+        pattern.is_active = False
+        pattern.save()  # triggers future obligation cancellation via RecurrencePattern.save()
+        if request.headers.get('HX-Request'):
+            pattern.expense_item.refresh_from_db()
+            return render(request, 'finance/_recurrence_panel.html', {'item': pattern.expense_item})
+        return redirect('finance:expense_detail', pk=expense_pk)
+    return redirect('finance:expense_detail', pk=expense_pk)

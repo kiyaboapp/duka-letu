@@ -265,10 +265,10 @@ class ProductSpec(TimestampedModel, ActionMixin):
     
     # Additional self-sufficient methods for template convenience
     def get_profit_margin_percent(self) -> float:
-        """Calculate profit margin percentage based on cached WAC and default selling price."""
-        if self.cached_wac > 0 and self.default_selling_price:
-            profit = self.default_selling_price - self.cached_wac
-            return round((profit / self.cached_wac) * 100, 2)
+        cost = self.cached_wac or self.default_cost_price or Decimal('0')
+        price = self.default_selling_price or Decimal('0')
+        if cost > 0 and price > 0:
+            return round(float((price - cost) / cost * 100), 2)
         return 0.0
     
     def get_reorder_quantity_suggestion(self) -> int:

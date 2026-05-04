@@ -79,11 +79,25 @@ class Asset(TimestampedModel):
 
     @property
     def accumulated_depreciation(self) -> Decimal:
-        from datetime import date
+        return self.get_accumulated_depreciation(timezone.now().date())
+
+    def get_accumulated_depreciation(self, as_of_date) -> Decimal:
         if self.depreciation_method == 'NONE' or not self.effective_cost:
             return Decimal('0')
-        end_date = self.disposal_date or date.today()
+        
+        # Acquisition date must be on or before as_of_date
+        if self.acquisition_date > as_of_date:
+            return Decimal('0')
+
+        # End date for depreciation is either disposal_date or as_of_date, whichever is earlier
+        end_date = as_of_date
+        if self.disposal_date and self.disposal_date < end_date:
+            end_date = self.disposal_date
+            
         years = Decimal((end_date - self.acquisition_date).days) / Decimal('365.25')
+        if years < 0:
+            return Decimal('0')
+
         depreciable = self.effective_cost - self.residual_value
         if self.depreciation_method == 'SL':
             acc = depreciable * self.depreciation_rate * years

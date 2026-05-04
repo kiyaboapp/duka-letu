@@ -205,6 +205,25 @@
 
     .card-body { padding: 1.25rem; }
 
+    /* ── Global Interactions ────────────────────────────────────── */
+    button, 
+    a, 
+    input[type="submit"], 
+    input[type="button"],
+    .btn,
+    [role="button"] {
+        cursor: pointer !important;
+    }
+
+    /* Subtle hover scale and brightness for all buttons/links */
+    button:hover,
+    .btn:hover,
+    input[type="submit"]:hover,
+    input[type="button"]:hover {
+        filter: brightness(1.05);
+        transition: all 0.2s ease;
+    }
+
     /* ── Buttons ─────────────────────────────────────────────────── */
     .btn {
         display: inline-flex;
@@ -501,7 +520,7 @@
         <!-- Quick action -->
         <div class="px-3 pt-3 pb-1">
             <a href="{% url 'sales:sale_create' %}"
-               class="flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-semibold text-white no-underline"
+               class="flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-semibold text-white no-underline transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
                style="background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 New Sale

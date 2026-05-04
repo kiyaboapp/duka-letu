@@ -55,16 +55,8 @@
 
     <!-- Recurrence -->
     <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Recurrence</h2>
-        {% for r in item.recurrences.all %}
-        <div class="text-sm space-y-1">
-            <div class="flex justify-between"><span class="text-gray-500">Type</span><span class="font-medium">{{ r.get_recurrence_type_display }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-500">Frequency</span><span>Every {{ r.frequency_value }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-500">Day of Month</span><span>{{ r.specific_day_of_month }}</span></div>
-        </div>
-        {% empty %}
-        <p class="text-gray-400 text-xs">No recurrence pattern set.</p>
-        {% endfor %}
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Auto-Generation</h2>
+        {% include 'finance/_recurrence_panel.html' %}
     </div>
 </div>
 

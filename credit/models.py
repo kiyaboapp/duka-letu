@@ -157,7 +157,11 @@ class Debt(TimestampedModel, ActionMixin):
         if is_new and not self.reference_number:
             self.reference_number = f"DT-{self.sale_date.year}-{self.pk:04d}"
             Debt.objects.filter(pk=self.pk).update(reference_number=self.reference_number)
-        self.product_spec.update_stock()
+        spec = self.product_spec
+        spec.update_stock()
+        if self.unit_price and self.unit_price != spec.default_selling_price:
+            spec.default_selling_price = self.unit_price
+            spec.save(update_fields=['default_selling_price'])
 
     def get_absolute_url(self):
         from django.urls import reverse
@@ -226,9 +230,6 @@ class DebtReturn(TimestampedModel, ActionMixin):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # Trigger stock update if needed (though repayments don't affect stock directly)
-        # Keeping for consistency with other transaction models
-        self.debt.product_spec.update_stock()
 
     def get_absolute_url(self):
         from django.urls import reverse

@@ -1,4 +1,4 @@
-{% load humanize %}
+{% load humanize fmt %}
 <tr id="obligation-row-{{ o.pk }}">
     <td class="px-4 py-2 text-gray-800">
         {% if o.expense_item %}
@@ -6,9 +6,12 @@
         {% elif o.liability_item %}
         <a href="{% url 'finance:liability_detail' o.liability_item.pk %}" class="hover:text-blue-600">{{ o.liability_item.name }}</a>
         {% else %}—{% endif %}
+        {% if o.prepayment_applied %}
+        <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">via prepayment</span>
+        {% endif %}
     </td>
     <td class="px-4 py-2 text-gray-500">{{ o.due_date|date:"j M Y" }}</td>
-    <td class="px-4 py-2 text-right tabular-nums font-medium text-gray-900">TZS {{ o.balance|floatformat:0|intcomma }}</td>
+    <td class="px-4 py-2 text-right tabular-nums font-medium text-gray-900">{{ o.balance|tzs }}</td>
     <td class="px-4 py-2 text-right">
         {% if o.balance > 0 %}
         <button hx-get="{% url 'finance:obligation_pay' o.pk %}"

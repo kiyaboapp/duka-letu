@@ -174,11 +174,13 @@ class ProductSpecDetailView(DetailView):
             product=product_spec.product
         ).exclude(pk=product_spec.pk).select_related('spec_value')[:10]
 
-        # Financial summary
+        # Financial summary — prefer cached WAC over default_cost_price
+        avg_cost = product_spec.cached_wac if product_spec.cached_wac else (product_spec.default_cost_price or Decimal('0'))
+        avg_price = product_spec.default_selling_price or Decimal('0')
         context['financials'] = {
-            'avg_cost': product_spec.default_cost_price or Decimal('0'),
-            'avg_price': product_spec.default_selling_price or Decimal('0'),
-            'stock_value': (product_spec.default_cost_price or Decimal('0')) * product_spec.current_stock,
+            'avg_cost': avg_cost,
+            'avg_price': avg_price,
+            'stock_value': product_spec.cached_stock_value if product_spec.cached_wac else avg_cost * product_spec.current_stock,
         }
 
         return context

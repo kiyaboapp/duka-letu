@@ -70,11 +70,7 @@ def dashboard_view(request):
     total_products = ProductSpec.objects.count()
 
     # ── Obligations ───────────────────────────────────────────────────────────
-    overdue_obligations = PaymentObligation.objects.filter(
-        due_date__lt=today,
-    ).exclude(
-        amount_paid__gte=F('amount_due') - F('prepayment_applied')
-    ).count()
+    overdue_obligations = PaymentObligation.objects.filter(status='OVERDUE').count()
 
     # ── Recent sales ──────────────────────────────────────────────────────────
     recent_sales = Sale.objects.select_related(

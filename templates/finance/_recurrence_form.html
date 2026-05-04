@@ -1,0 +1,66 @@
+{% load humanize %}
+<div id="recurrence-panel">
+<form hx-post="{% if form.instance.pk %}{% url 'finance:recurrence_update' form.instance.pk %}{% else %}{% url 'finance:recurrence_create' item.pk %}{% endif %}"
+      hx-target="#recurrence-panel" hx-swap="outerHTML"
+      class="space-y-3 text-sm">
+    {% csrf_token %}
+    <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Frequency</label>
+        {{ form.recurrence_type }}
+        {% if form.recurrence_type.errors %}<p class="text-xs text-red-600">{{ form.recurrence_type.errors.0 }}</p>{% endif %}
+    </div>
+    <div id="due-day-row">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Due on</label>
+        <div class="space-y-1 mb-2">
+            {% for radio in form.due_day_mode %}
+            <label class="flex items-center gap-2 text-xs cursor-pointer">{{ radio.tag }} {{ radio.choice_label }}</label>
+            {% endfor %}
+        </div>
+        {{ form.due_day_value }}
+    </div>
+    <div id="every-n-row" class="hidden">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Every N days</label>
+        {{ form.frequency_value }}
+    </div>
+    <div id="pay-now-section" class="hidden border-t border-gray-100 pt-3 space-y-2">
+        <label class="flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
+            {{ form.pay_now }} Pay immediately
+        </label>
+        <div id="payment-method-field" class="hidden">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Payment method</label>
+            {{ form.payment_method }}
+        </div>
+    </div>
+    <div class="flex gap-2 pt-1">
+        <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700">Save</button>
+        <button type="button"
+                hx-get="{% url 'finance:expense_detail' item.pk %}"
+                hx-target="#recurrence-panel" hx-swap="outerHTML"
+                class="px-3 py-1.5 border border-gray-300 text-gray-600 text-xs rounded hover:bg-gray-50">Cancel</button>
+    </div>
+</form>
+<script>
+(function() {
+    var type = document.querySelector('[name="recurrence_type"]');
+    var dueDayRow = document.getElementById('due-day-row');
+    var everyNRow = document.getElementById('every-n-row');
+    var payNowSection = document.getElementById('pay-now-section');
+    var payNowCheck = document.querySelector('[name="pay_now"]');
+    var payMethodField = document.getElementById('payment-method-field');
+    function update() {
+        var v = type.value;
+        var isOneTime = v === 'ONE_TIME';
+        dueDayRow.classList.toggle('hidden', v === 'DAILY' || v === 'WEEKLY' || isOneTime);
+        everyNRow.classList.toggle('hidden', v !== 'DAILY');
+        payNowSection.classList.toggle('hidden', !isOneTime);
+    }
+    type.addEventListener('change', update);
+    if (payNowCheck) {
+        payNowCheck.addEventListener('change', function() {
+            payMethodField.classList.toggle('hidden', !this.checked);
+        });
+    }
+    update();
+})();
+</script>
+</div>

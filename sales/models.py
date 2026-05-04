@@ -34,7 +34,11 @@ class Sale(TimestampedModel, ActionMixin):
         if is_new and not self.reference_number:
             self.reference_number = f"SL-{self.sale_date.year}-{self.pk:06d}"
             Sale.objects.filter(pk=self.pk).update(reference_number=self.reference_number)
-        self.product_spec.update_stock()
+        spec = self.product_spec
+        spec.update_stock()
+        if self.unit_price and self.unit_price != spec.default_selling_price:
+            spec.default_selling_price = self.unit_price
+            spec.save(update_fields=['default_selling_price'])
 
     def get_absolute_url(self):
         from django.urls import reverse

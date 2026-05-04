@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load humanize fmt %}
 {% block title %}Finance — Kiyabo Duka{% endblock %}
 {% block page_title %}<h1 class="text-base font-semibold text-gray-800">Finance</h1>{% endblock %}
 {% block content %}
@@ -9,8 +9,21 @@
         <a href="{% url 'finance:expense_list' %}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Expenses</a>
         <a href="{% url 'finance:liability_list' %}" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Liabilities</a>
         <a href="{% url 'finance:expense_create' %}" class="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">+ New Expense</a>
+        <form method="post" action="{% url 'finance:generate_now' %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">⟳ Generate Now</button>
+        </form>
     </div>
 </div>
+
+{% if unallocated_prepayments %}
+<div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+    ⚠️ Unallocated prepayments:
+    {% for p in unallocated_prepayments %}
+    <strong>{{ p.expense_item }} — TZS {{ p.amount_remaining|tzs }}</strong>{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
 
 <!-- KPI row -->
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -24,7 +37,7 @@
     </div>
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5" style="border-left:4px solid #10b981">
         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Paid This Month</p>
-        <p class="text-2xl font-bold text-emerald-600 tabular-nums mt-1">TZS {{ paid_this_month|floatformat:0|intcomma }}</p>
+        <p class="text-2xl font-bold text-emerald-600 tabular-nums mt-1">{{ paid_this_month|tzs }}</p>
     </div>
 </div>
 
@@ -34,18 +47,14 @@
         <h2 class="text-sm font-semibold text-red-800">Overdue ({{ overdue|length }})</h2>
     </div>
     <table class="min-w-full divide-y divide-gray-100 text-sm" id="overdue-table">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Expense</th>
-                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Due</th>
-                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Balance</th>
-                <th class="px-4 py-2"></th>
-            </tr>
-        </thead>
+        <thead class="bg-gray-50"><tr>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Expense</th>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Due</th>
+            <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Balance</th>
+            <th class="px-4 py-2"></th>
+        </tr></thead>
         <tbody class="divide-y divide-gray-100">
-            {% for o in overdue %}
-            {% include 'finance/_obligation_row.html' %}
-            {% endfor %}
+            {% for o in overdue %}{% include 'finance/_obligation_row.html' %}{% endfor %}
         </tbody>
     </table>
 </div>
@@ -57,18 +66,14 @@
         <h2 class="text-sm font-semibold text-yellow-800">Due This Month ({{ due_this_month|length }})</h2>
     </div>
     <table class="min-w-full divide-y divide-gray-100 text-sm">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Expense</th>
-                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Due</th>
-                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Balance</th>
-                <th class="px-4 py-2"></th>
-            </tr>
-        </thead>
+        <thead class="bg-gray-50"><tr>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Expense</th>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Due</th>
+            <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Balance</th>
+            <th class="px-4 py-2"></th>
+        </tr></thead>
         <tbody class="divide-y divide-gray-100">
-            {% for o in due_this_month %}
-            {% include 'finance/_obligation_row.html' %}
-            {% endfor %}
+            {% for o in due_this_month %}{% include 'finance/_obligation_row.html' %}{% endfor %}
         </tbody>
     </table>
 </div>
@@ -80,18 +85,14 @@
         <h2 class="text-sm font-semibold text-gray-700">Upcoming ({{ upcoming|length }})</h2>
     </div>
     <table class="min-w-full divide-y divide-gray-100 text-sm">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Expense</th>
-                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Due</th>
-                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Balance</th>
-                <th class="px-4 py-2"></th>
-            </tr>
-        </thead>
+        <thead class="bg-gray-50"><tr>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Expense</th>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Due</th>
+            <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Balance</th>
+            <th class="px-4 py-2"></th>
+        </tr></thead>
         <tbody class="divide-y divide-gray-100">
-            {% for o in upcoming %}
-            {% include 'finance/_obligation_row.html' %}
-            {% endfor %}
+            {% for o in upcoming %}{% include 'finance/_obligation_row.html' %}{% endfor %}
         </tbody>
     </table>
 </div>
@@ -101,5 +102,24 @@
 <div class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
     No pending obligations. All up to date.
 </div>
+{% endif %}
+
+{% if overdue_historical %}
+<details class="mt-6">
+    <summary class="cursor-pointer text-sm text-gray-500 hover:text-gray-700">Historical overdue ({{ overdue_historical|length }} pre-2026 obligations)</summary>
+    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden mt-2">
+        <table class="min-w-full divide-y divide-gray-100 text-sm">
+            <thead class="bg-gray-50"><tr>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Expense</th>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Due</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Balance</th>
+                <th class="px-4 py-2"></th>
+            </tr></thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for o in overdue_historical %}{% include 'finance/_obligation_row.html' %}{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</details>
 {% endif %}
 {% endblock %}

@@ -1,0 +1,48 @@
+{% load humanize %}
+<div id="recurrence-panel">
+{% for r in item.recurrences.all %}
+<div class="text-sm space-y-2">
+    <div class="flex justify-between"><span class="text-gray-500">Type</span><span class="font-medium">{{ r.get_recurrence_type_display }}</span></div>
+    <div class="flex justify-between"><span class="text-gray-500">Every</span><span>{{ r.frequency_value }}</span></div>
+    {% if r.recurrence_type == 'MONTHLY' %}
+    <div class="flex justify-between"><span class="text-gray-500">Day</span><span>{% if r.specific_day_of_month == 0 or r.specific_day_of_month == -1 %}Last day{% else %}{{ r.specific_day_of_month }}{% endif %}</span></div>
+    {% endif %}
+    <div class="flex justify-between"><span class="text-gray-500">Next due</span><span class="font-medium text-blue-700">{{ item.get_next_due_date|date:"j M Y"|default:"—" }}</span></div>
+    <div class="flex justify-between"><span class="text-gray-500">Status</span>
+        <span class="{% if r.is_active %}text-green-700{% else %}text-gray-400{% endif %}">{% if r.is_active %}Active{% else %}Inactive{% endif %}</span>
+    </div>
+    <div class="flex gap-2 pt-2">
+        <button hx-get="{% url 'finance:recurrence_update' r.pk %}"
+                hx-target="#recurrence-panel" hx-swap="outerHTML"
+                class="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50">Edit</button>
+        <form method="post" action="{% url 'finance:recurrence_delete' r.pk %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="text-xs px-2 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50">
+                {% if r.is_active %}Deactivate{% else %}Reactivate{% endif %}
+            </button>
+        </form>
+    </div>
+</div>
+{% empty %}
+{% if not item.end_date %}
+<div class="text-center py-3">
+    <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-3">⚠ No auto-generation configured</p>
+    {% if setup_recurrence %}
+    {% include 'finance/_recurrence_form.html' %}
+    {% else %}
+    <button hx-get="{% url 'finance:recurrence_create' item.pk %}"
+            hx-target="#recurrence-panel" hx-swap="outerHTML"
+            class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">Set up recurrence</button>
+    {% endif %}
+</div>
+{% else %}
+<p class="text-xs text-gray-400">One-off expense — no recurrence needed.</p>
+{% if not item.payments.exists %}
+<div class="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700 flex items-center justify-between">
+    <span>Payment not yet recorded.</span>
+    <a href="{% url 'finance:expense_direct_pay' item.pk %}" class="underline font-medium ml-2">Record payment →</a>
+</div>
+{% endif %}
+{% endif %}
+{% endfor %}
+</div>

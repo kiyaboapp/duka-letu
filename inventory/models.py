@@ -177,7 +177,17 @@ class PurchaseDetail(TimestampedModel):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.product_spec.update_stock()
+        spec = self.product_spec
+        spec.update_stock()
+        updates = []
+        if spec.cached_wac:
+            spec.default_cost_price = spec.cached_wac
+            updates.append('default_cost_price')
+        if self.suggested_selling_price:
+            spec.default_selling_price = self.suggested_selling_price
+            updates.append('default_selling_price')
+        if updates:
+            spec.save(update_fields=updates)
 
     def delete(self, *args, **kwargs):
         spec = self.product_spec
